@@ -6,6 +6,7 @@ Apple Silicon only; see README > Edge mode.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from .prompts import NUDGE_SYSTEM_PROMPT, nudge_user_prompt
 
@@ -19,6 +20,11 @@ class MLXNudgeWriter:
     with the vision model for unified memory on an 8GB machine.
     """
 
+    # Annotated loosely: mlx is an optional extra, so its types cannot be
+    # imported at module level on a cloud-only install.
+    _model: Any
+    _tokenizer: Any
+
     def __init__(self, model_id: str = "mlx-community/Llama-3.2-1B-Instruct-4bit") -> None:
         """Load the model. Expect a download on first use."""
         try:
@@ -31,7 +37,10 @@ class MLXNudgeWriter:
             ) from exc
 
         logger.info("Loading local nudge model %s", model_id)
-        self._model, self._tokenizer = load(model_id)
+        # load() returns a 2- or 3-tuple depending on return_config, so index
+        # rather than unpack.
+        loaded = load(model_id)
+        self._model, self._tokenizer = loaded[0], loaded[1]
 
     def write_nudge(self, habit_label: str, recent_lines: list[str] | None = None) -> str:
         """Return a candidate nudge sentence."""

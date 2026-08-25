@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import io
 import logging
+from typing import Any, cast
 
 from PIL import Image
 
@@ -29,9 +30,11 @@ class OpenAIVision:
     def classify(self, frame: Image.Image) -> Observation:
         """Classify one frame, falling back to a neutral observation on failure."""
         try:
-            response = self._client.responses.create(
-                model=self._model,
-                input=[
+            # Cast: the SDK types this as a union of ~30 TypedDicts that a plain
+            # dict literal cannot be checked against.
+            request_input = cast(
+                Any,
+                [
                     {
                         "role": "user",
                         "content": [
@@ -44,6 +47,7 @@ class OpenAIVision:
                     }
                 ],
             )
+            response = self._client.responses.create(model=self._model, input=request_input)
             raw = (response.output_text or "").strip()
         except Exception:
             # A dropped connection or rate limit must not end the session; skip

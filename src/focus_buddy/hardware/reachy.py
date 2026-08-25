@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 _MAX_FRAME_EDGE = 1280
 # play_sound returns immediately, so hold on past the clip to let it finish.
 _PLAYBACK_MARGIN_S = 0.25
+# Upper bound on how long we will ever block for playback. A spoken nudge is a
+# single sentence; anything longer means a bad duration, not a long clip.
+_MAX_PLAYBACK_WAIT_S = 30.0
 
 
 class ReachyBody:
@@ -71,7 +74,8 @@ class ReachyBody:
             return
         # play_sound is non-blocking and the caller deletes the file afterwards,
         # so wait for playback rather than pulling the file out from under it.
-        time.sleep(max(0.0, duration_s) + _PLAYBACK_MARGIN_S)
+        wait_s = min(max(0.0, duration_s) + _PLAYBACK_MARGIN_S, _MAX_PLAYBACK_WAIT_S)
+        time.sleep(wait_s)
 
     def close(self) -> None:
         """Stop wobbling. The connection itself belongs to the app framework."""

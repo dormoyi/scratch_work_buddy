@@ -79,9 +79,14 @@ class Settings:
     @classmethod
     def from_env(cls) -> Settings:
         """Build settings from environment variables (and a .env file if present)."""
-        from dotenv import load_dotenv
+        from dotenv import find_dotenv, load_dotenv
 
-        load_dotenv()
+        # usecwd=True matters: by default python-dotenv searches upward from the
+        # *calling module's* file, which for an editable install silently finds
+        # the .env next to the source tree no matter where the user ran from,
+        # and finds nothing at all once installed as a wheel. Anchoring to the
+        # working directory makes both installs behave the same.
+        load_dotenv(find_dotenv(usecwd=True))
 
         backend = Backend(os.getenv("FOCUS_BUDDY_BACKEND", Backend.CLOUD.value).lower())
         speech = SpeechEngine(os.getenv("FOCUS_BUDDY_SPEECH", SpeechEngine.OPENAI.value).lower())

@@ -25,6 +25,12 @@ _MIN_CROP_PX = 64
 _MIN_FACE_PX = 48
 
 
+def _cascade(name: str) -> cv2.CascadeClassifier:
+    """Load a bundled Haar cascade by filename."""
+    # cv2.data exists at runtime but is absent from the type stubs.
+    return cv2.CascadeClassifier(cv2.data.haarcascades + name)  # type: ignore[attr-defined]
+
+
 def fallback_roi(width: int, height: int) -> tuple[int, int, int, int]:
     """Upper-centre desk framing, used when no face is detected."""
     return (
@@ -61,13 +67,13 @@ def detect_face(rgb: np.ndarray) -> tuple[int, int, int, int, int] | None:
             boxes.append((int(x), int(y), int(x + w), int(y + h), int(w * h), look_dir, is_profile))
 
     for name in ("haarcascade_frontalface_default.xml", "haarcascade_frontalface_alt2.xml"):
-        cascade = cv2.CascadeClassifier(cv2.data.haarcascades + name)
+        cascade = _cascade(name)
         if cascade.empty():
             continue
         scan(cascade, flip=False, look_dir=LOOK_CENTRE, is_profile=False)
         scan(cascade, flip=True, look_dir=LOOK_CENTRE, is_profile=False)
 
-    profile = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml")
+    profile = _cascade("haarcascade_profileface.xml")
     if not profile.empty():
         scan(profile, flip=False, look_dir=LOOK_RIGHT, is_profile=True)
         scan(profile, flip=True, look_dir=LOOK_LEFT, is_profile=True)
