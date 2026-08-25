@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# `reachy-mini check` requires: project name == entry-point name, and the
+# entry-point class == CamelCase of the package name (focus_buddy -> FocusBuddy).
+name = "focus_buddy"
+version = "0.1.0"
+description = "A Reachy Mini desk companion that notices focus-breaking habits and nudges you about them."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Ines Dormoy" }]
+keywords = ["reachy-mini-app", "reachy-mini", "robotics", "focus", "vlm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # Robot. Pin to the daemon major.minor you run against:
+    #   curl localhost:8000/api/daemon/status
+    # SDK 1.9 against daemon 1.8 hangs in GStreamer media init.
+    "reachy-mini>=1.8.0,<1.9",
+    # reachy-mini 1.8 pins hub==1.3.0; the optional edge extra needs >=1.5.
+    "huggingface-hub>=1.5.0,<2.0",
+    # Cloud vision, nudges and text-to-speech.
+    "openai>=1.40",
+    "python-dotenv>=1.0",
+    "pillow>=10.0",
+    "numpy>=1.24",
+    # OpenCV 5.x dropped the bundled Haar cascade XMLs we use to crop to the face.
+    "opencv-python>=4.8,<5",
+]
+
+[project.optional-dependencies]
+# Apple Silicon ONLY. mlx has no wheels for ARM Linux, so this extra cannot be
+# installed on a Reachy Mini wireless (Raspberry Pi). See README > Edge mode.
+edge = [
+    "mlx-vlm>=0.1.12",
+    "mlx-lm>=0.19",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-requests",
+]
+
+# Console script for running on a laptop, outside the robot dashboard.
+[project.scripts]
+focus-buddy = "focus_buddy.main:main"
+
+# How the Reachy Mini dashboard discovers and launches the app.
+[project.entry-points."reachy_mini_apps"]
+focus_buddy = "focus_buddy.main:FocusBuddy"
+
+[project.urls]
+Homepage = "https://github.com/dormoyi/focus_buddy"
+Issues = "https://github.com/dormoyi/focus_buddy/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+focus_buddy = ["static/*", "prompts/*.txt"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [".venv", "build", "dist", "**/__pycache__", "*.egg-info"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "C4", "UP", "B", "D"]
+ignore = [
+    "E501",  # line length is handled by the formatter
+    "D100",  # missing docstring in public module
+    "D104",  # missing docstring in public package
+    "D203",  # conflicts with D211
+    "D213",  # conflicts with D212
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]
+"tools/*" = ["D"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["focus_buddy"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src/"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
