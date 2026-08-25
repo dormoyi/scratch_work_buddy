@@ -9,14 +9,16 @@ venv/
 __pycache__/
 *.py[cod]
 *$py.class
+build/
+dist/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 
-# Local runtime / debug artifacts
+# Model weights and local runtime artifacts
 cache/
-debug_frame.jpg
+debug/
 *.wav
 *.aiff
 

@@ -1,0 +1,175 @@
+/* Focus Buddy landing page.
+   Self-contained: no external fonts or assets, so it renders offline and inside
+   the Hugging Face Space sandbox. */
+
+:root {
+	--bg: #0f1020;
+	--bg-soft: #191a33;
+	--card: #1e1f3d;
+	--border: #2e3060;
+	--text: #ececf5;
+	--muted: #a3a3c2;
+	--accent: #8b7cf6;
+	--accent-2: #f472b6;
+	--radius: 14px;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	line-height: 1.6;
+}
+
+a {
+	color: var(--accent);
+}
+
+code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 0.9em;
+}
+
+.hero {
+	padding: 4rem 1.5rem 3rem;
+	text-align: center;
+	background: radial-gradient(120% 100% at 50% 0%, #2a2358 0%, var(--bg) 70%);
+	border-bottom: 1px solid var(--border);
+}
+
+.app-icon {
+	font-size: 3.5rem;
+	line-height: 1;
+}
+
+.hero h1 {
+	margin: 0.6rem 0 0.4rem;
+	font-size: clamp(2rem, 6vw, 3rem);
+	background: linear-gradient(90deg, var(--accent), var(--accent-2));
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.tagline {
+	margin: 0 auto;
+	max-width: 34rem;
+	color: var(--muted);
+	font-size: 1.1rem;
+}
+
+.pill-row {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.5rem;
+	margin-top: 1.5rem;
+}
+
+.pill {
+	padding: 0.3rem 0.85rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--bg-soft);
+	color: var(--muted);
+	font-size: 0.85rem;
+}
+
+.container {
+	max-width: 52rem;
+	margin: 0 auto;
+	padding: 2rem 1.5rem 3rem;
+	display: grid;
+	gap: 1.25rem;
+}
+
+.card {
+	background: var(--card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 1.5rem;
+}
+
+.card h2 {
+	margin-top: 0;
+	font-size: 1.25rem;
+}
+
+.habit-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+	gap: 1rem;
+	margin-top: 1.25rem;
+}
+
+.habit {
+	display: grid;
+	gap: 0.25rem;
+	padding: 1rem;
+	background: var(--bg-soft);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+}
+
+.habit-icon {
+	font-size: 1.6rem;
+}
+
+.habit span:last-child {
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+pre {
+	overflow-x: auto;
+	padding: 1rem;
+	background: #0b0b18;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+}
+
+pre code {
+	color: #d7d7ee;
+}
+
+.comment {
+	color: #6f6f95;
+}
+
+.fine {
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+.flow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+}
+
+.step {
+	padding: 0.4rem 0.75rem;
+	background: var(--bg-soft);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	font-size: 0.9rem;
+}
+
+.arrow {
+	color: var(--accent);
+}
+
+.footer {
+	padding: 2rem 1.5rem;
+	text-align: center;
+	color: var(--muted);
+	border-top: 1px solid var(--border);
+	font-size: 0.9rem;
+}

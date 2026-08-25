@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Focus Buddy</title>
+	<link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+	<header class="hero">
+		<div class="hero-content">
+			<div class="app-icon">👀</div>
+			<h1>Focus Buddy</h1>
+			<p class="tagline">A Reachy Mini that notices when you touch your face — and says something.</p>
+			<div class="pill-row">
+				<span class="pill">Runs on-robot or on your laptop</span>
+				<span class="pill">Cloud or fully local</span>
+				<span class="pill">Nothing stored</span>
+			</div>
+		</div>
+	</header>
+
+	<main class="container">
+		<section class="card">
+			<h2>What it does</h2>
+			<p>
+				It watches for the small habits that break your focus and mentions them out loud, at most
+				once a minute. Once an hour it tells you how the day is going. There is no score and no
+				dashboard — the tally resets at midnight and nothing is uploaded.
+			</p>
+			<div class="habit-grid">
+				<div class="habit">
+					<span class="habit-icon">🤦</span>
+					<strong>Face touching</strong>
+					<span>A hand resting on your cheek, chin or forehead.</span>
+				</div>
+				<div class="habit">
+					<span class="habit-icon">💅</span>
+					<strong>Nail biting</strong>
+					<span>Fingertips at or in your mouth.</span>
+				</div>
+				<div class="habit">
+					<span class="habit-icon">📱</span>
+					<strong>Phone drift</strong>
+					<span>Phone in hand, eyes on it instead of the screen.</span>
+				</div>
+			</div>
+		</section>
+
+		<section class="card">
+			<h2>Try it</h2>
+			<p>No robot required — it runs against your laptop webcam.</p>
+			<pre><code>pip install -e .
+cp .env.example .env      <span class="comment"># add your OPENAI_API_KEY</span>
+focus-buddy --desktop</code></pre>
+			<p class="fine">
+				On a Mac with Apple Silicon you can run everything locally instead, so no image ever
+				leaves the machine: <code>pip install -e '.[edge]'</code>
+			</p>
+		</section>
+
+		<section class="card">
+			<h2>How it works</h2>
+			<div class="flow">
+				<span class="step">Camera frame</span>
+				<span class="arrow">→</span>
+				<span class="step">Vision model</span>
+				<span class="arrow">→</span>
+				<span class="step">Observation</span>
+				<span class="arrow">→</span>
+				<span class="step">Nudge</span>
+				<span class="arrow">→</span>
+				<span class="step">Speech</span>
+			</div>
+			<p>
+				Every vision backend returns the same typed <code>Observation</code>, so swapping a cloud
+				model for a local one changes nothing downstream. Spoken nudges come from a fixed set of
+				phrasings by default; if you let a language model rewrite them, whatever it produces has
+				to pass validation first — right length, actually about the habit it saw, and not
+				contradicting the frame.
+			</p>
+		</section>
+	</main>
+
+	<footer class="footer">
+		<p>
+			👀 Focus Buddy •
+			<a href="https://github.com/dormoyi/focus_buddy" target="_blank" rel="noopener">Source</a> •
+			<a href="https://huggingface.co/spaces/pollen-robotics/reachy-mini-landing-page#apps" target="_blank"
+				rel="noopener">More Reachy Mini apps</a>
+		</p>
+	</footer>
+</body>
+
+</html>

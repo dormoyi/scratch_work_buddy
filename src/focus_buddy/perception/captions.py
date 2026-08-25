@@ -27,9 +27,7 @@ def _expand(pattern: str) -> str:
     Deliberately not an f-string: regex quantifiers like ``.{0,24}`` collide with
     f-string replacement fields and silently compile to a literal ``(0, 24)``.
     """
-    return (
-        pattern.replace("<FACE>", _FACE).replace("<DET>", _DET).replace("<SUPPORT>", _SUPPORT)
-    )
+    return pattern.replace("<FACE>", _FACE).replace("<DET>", _DET).replace("<SUPPORT>", _SUPPORT)
 
 
 # Models often hedge with "hands are not visible" and then describe a hand anyway.
@@ -110,7 +108,7 @@ def _is_negated(text: str, match_start: int) -> bool:
 
 
 def _found_unnegated(pattern: re.Pattern[str], text: str) -> bool:
-    """True if the pattern matches anywhere outside a negated clause."""
+    """Report whether the pattern matches anywhere outside a negated clause."""
     return any(not _is_negated(text, m.start()) for m in pattern.finditer(text))
 
 
