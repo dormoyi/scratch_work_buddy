@@ -41,7 +41,8 @@ class TestValidation:
         """Fail before the camera opens rather than on the first frame."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         errors = Settings(backend=Backend.EDGE, landmark_python="/nope/python").validate()
-        assert any("setup_landmark_sidecar" in error for error in errors)
+        # The message must name something an installed user can actually run.
+        assert any("focus-buddy-setup-sidecar" in error for error in errors)
 
     def test_edge_vlm_off_mac_is_fatal(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "linux")

@@ -219,9 +219,19 @@ def observation_from_payload(payload: dict[str, Any]) -> Observation:
     ).resolved()
 
 
+def default_sidecar_dir() -> Path:
+    """Where :mod:`focus_buddy.setup_sidecar` builds the helper environment."""
+    return Path.home() / ".cache" / "focus_buddy" / "landmark-venv"
+
+
 def default_sidecar_python() -> Path:
-    """Where :mod:`tools.setup_landmark_sidecar` puts the helper interpreter."""
-    return Path.home() / ".cache" / "focus_buddy" / "landmark-venv" / "bin" / "python"
+    """Locate the helper interpreter inside :func:`default_sidecar_dir`.
+
+    Derived rather than spelled out a second time: the setup command and the
+    lookup have to agree, and two literals eventually will not.
+    """
+    posix = default_sidecar_dir() / "bin" / "python"
+    return posix if posix.exists() else default_sidecar_dir() / "Scripts" / "python.exe"
 
 
 def sidecar_script() -> Path:
@@ -237,7 +247,7 @@ def sidecar_script() -> Path:
 _INHERITED_PYTHON_VARS = ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV", "__PYVENV_LAUNCHER__")
 
 
-def _child_environment() -> dict[str, str]:
+def child_environment() -> dict[str, str]:
     """Copy the parent environment, dropping anything that redirects imports."""
     return {k: v for k, v in os.environ.items() if k not in _INHERITED_PYTHON_VARS}
 
@@ -264,7 +274,7 @@ class _Sidecar:
         if not self._python.exists():
             raise SidecarError(
                 f"No landmark sidecar interpreter at {self._python}. Create it with:\n"
-                "    python tools/setup_landmark_sidecar.py\n"
+                "    focus-buddy-setup-sidecar\n"
                 "or point FOCUS_BUDDY_LANDMARK_PYTHON at an interpreter that has "
                 "'mediapipe>=0.10.14,<0.10.30' installed."
             )
@@ -274,7 +284,7 @@ class _Sidecar:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
-            env=_child_environment(),
+            env=child_environment(),
         )
         hello = self._read_line(STARTUP_TIMEOUT_S)
         if hello is None or not hello.get("ok"):

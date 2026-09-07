@@ -80,7 +80,7 @@ class Settings:
     debug_frame_path: str | None = None
 
     # Interpreter for the landmark sidecar. None means the default location that
-    # tools/setup_landmark_sidecar.py writes to.
+    # `focus-buddy-setup-sidecar` writes to.
     landmark_python: str | None = None
 
     # Populated by validate(); non-fatal notes worth showing the user.
@@ -181,7 +181,7 @@ class Settings:
                 errors.append(
                     f"backend={self.backend.value} needs the landmark sidecar, but there is "
                     f"no interpreter at {interpreter}. Create it with:\n"
-                    "    python tools/setup_landmark_sidecar.py\n"
+                    "    focus-buddy-setup-sidecar\n"
                     "MediaPipe needs its own environment because its working API requires "
                     "numpy<2, while reachy-mini and opencv-python require numpy>=2."
                 )

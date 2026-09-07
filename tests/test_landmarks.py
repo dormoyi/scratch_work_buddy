@@ -20,7 +20,7 @@ from focus_buddy.perception.landmarks import (
     MOUTH_CONTACT_MAX_RATIO,
     HybridVision,
     LandmarkVision,
-    _child_environment,
+    child_environment,
     classify_contact,
     distance_to_box,
     distance_to_point,
@@ -171,13 +171,13 @@ class TestChildEnvironment:
         monkeypatch.setenv("PYTHONPATH", "/somewhere/site-packages")
         monkeypatch.setenv("PYTHONHOME", "/somewhere")
         monkeypatch.setenv("VIRTUAL_ENV", "/somewhere/.venv")
-        env = _child_environment()
+        env = child_environment()
         for name in ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV"):
             assert name not in env
 
     def test_everything_else_survives(self, monkeypatch):
         monkeypatch.setenv("HOME", "/home/someone")
-        assert _child_environment()["HOME"] == "/home/someone"
+        assert child_environment()["HOME"] == "/home/someone"
 
 
 class TestEncodeFrame:

@@ -62,6 +62,10 @@ dev = [
 # Console script for running on a laptop, outside the robot dashboard.
 [project.scripts]
 focus-buddy = "focus_buddy.main:main"
+# Builds the MediaPipe environment that FOCUS_BUDDY_BACKEND=edge talks to. A
+# console script rather than a file under tools/, because an installed wheel
+# carries no tools directory.
+focus-buddy-setup-sidecar = "focus_buddy.setup_sidecar:main"
 
 # How the Reachy Mini dashboard discovers and launches the app.
 [project.entry-points."reachy_mini_apps"]

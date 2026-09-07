@@ -119,8 +119,11 @@ on Apple Silicon is the legacy `solutions` one (the Tasks API aborts in
 pipe. Build it once:
 
 ```bash
-python tools/setup_landmark_sidecar.py
+focus-buddy-setup-sidecar
 ```
+
+It ships with the package, so it works from an installed wheel as well as from a
+checkout. Point Focus Buddy at a different one with `FOCUS_BUDDY_LANDMARK_PYTHON`.
 
 Then pick a backend that uses it:
 
