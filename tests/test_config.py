@@ -22,13 +22,31 @@ class TestValidation:
 
     def test_fully_local_on_mac_needs_no_key(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "darwin")
-        settings = Settings(backend=Backend.EDGE, speech=SpeechEngine.MACOS)
+        # Any real interpreter satisfies the sidecar check; using this one keeps
+        # the suite from depending on a venv the developer happens to have built.
+        settings = Settings(
+            backend=Backend.EDGE, speech=SpeechEngine.MACOS, landmark_python=sys.executable
+        )
         assert settings.validate() == []
 
-    def test_edge_off_mac_is_fatal(self, monkeypatch):
+    def test_edge_runs_anywhere_mediapipe_does(self, monkeypatch):
+        """Edge is geometry now; only edge-vlm is tied to Apple Silicon."""
+        monkeypatch.setattr(sys, "platform", "linux")
+        settings = Settings(
+            backend=Backend.EDGE, speech=SpeechEngine.NONE, landmark_python=sys.executable
+        )
+        assert settings.validate() == []
+
+    def test_edge_without_a_sidecar_is_fatal(self, monkeypatch):
+        """Fail before the camera opens rather than on the first frame."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        errors = Settings(backend=Backend.EDGE, landmark_python="/nope/python").validate()
+        assert any("setup_landmark_sidecar" in error for error in errors)
+
+    def test_edge_vlm_off_mac_is_fatal(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        errors = Settings(backend=Backend.EDGE).validate()
+        errors = Settings(backend=Backend.EDGE_VLM).validate()
         assert any("Apple Silicon" in error for error in errors)
 
     def test_macos_speech_off_mac_is_fatal(self, monkeypatch):

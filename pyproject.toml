@@ -45,6 +45,11 @@ edge = [
     "mlx-vlm>=0.1.12",
     "mlx-lm>=0.19",
 ]
+# NOTE: there is deliberately no `landmarks` extra. MediaPipe cannot be
+# installed next to the rest of this package: its only working API needs
+# numpy<2, while reachy-mini needs numpy>=2.2.5 and opencv-python needs numpy>=2.
+# It runs in a separate interpreter instead, built by:
+#     python tools/setup_landmark_sidecar.py
 
 [dependency-groups]
 dev = [

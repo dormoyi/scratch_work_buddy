@@ -6,13 +6,19 @@ import os
 import sys
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 
 
 class Backend(str, Enum):
-    """Where the vision and language models run."""
+    """How a camera frame becomes an Observation."""
 
     CLOUD = "cloud"
+    # Landmark geometry, on this machine. The default local backend: it measures
+    # contact, gaze and presence in about 50ms without running a model at all.
     EDGE = "edge"
+    # The quantised local VLM. Kept because it runs, not because it works: on a
+    # labelled set it scored at chance for every habit while taking ~7.5s a frame.
+    EDGE_VLM = "edge-vlm"
 
 
 class SpeechEngine(str, Enum):
@@ -73,6 +79,10 @@ class Settings:
     # Write the exact crop the edge VLM saw to this path, for debugging framing.
     debug_frame_path: str | None = None
 
+    # Interpreter for the landmark sidecar. None means the default location that
+    # tools/setup_landmark_sidecar.py writes to.
+    landmark_python: str | None = None
+
     # Populated by validate(); non-fatal notes worth showing the user.
     warnings: list[str] = field(default_factory=list)
 
@@ -109,6 +119,7 @@ class Settings:
                 "FOCUS_BUDDY_EDGE_LLM_MODEL", "mlx-community/Llama-3.2-1B-Instruct-4bit"
             ),
             debug_frame_path=os.getenv("FOCUS_BUDDY_DEBUG_FRAME") or None,
+            landmark_python=os.getenv("FOCUS_BUDDY_LANDMARK_PYTHON") or None,
         )
 
     def for_debug(self) -> Settings:
@@ -118,12 +129,18 @@ class Settings:
         return self
 
     @property
+    def uses_landmarks(self) -> bool:
+        """Whether this configuration measures habits from landmark geometry."""
+        return self.backend is Backend.EDGE
+
+    @property
     def needs_openai(self) -> bool:
         """Whether this configuration will call the OpenAI API."""
         return (
             self.backend is Backend.CLOUD
             or self.speech is SpeechEngine.OPENAI
-            or (self.use_llm_nudges and self.backend is Backend.CLOUD)
+            # Only edge-vlm carries a local language model to phrase nudges with.
+            or (self.use_llm_nudges and self.backend is not Backend.EDGE_VLM)
         )
 
     def validate(self) -> list[str]:
@@ -142,18 +159,44 @@ class Settings:
                 "Copy .env.example to .env and add your key."
             )
 
-        if self.backend is Backend.EDGE and sys.platform != "darwin":
+        if self.backend is Backend.EDGE_VLM and sys.platform != "darwin":
             errors.append(
-                "Edge mode requires macOS on Apple Silicon: it runs the local models "
+                "backend=edge-vlm requires macOS on Apple Silicon: it runs the local models "
                 "through MLX, which has no builds for Linux or Windows (including the "
                 "Raspberry Pi inside a Reachy Mini wireless). "
-                "Use FOCUS_BUDDY_BACKEND=cloud instead."
+                "Use FOCUS_BUDDY_BACKEND=edge instead; it needs no model at all."
             )
 
         if self.speech is SpeechEngine.MACOS and sys.platform != "darwin":
             errors.append(
                 "FOCUS_BUDDY_SPEECH=macos needs the macOS `say` command. "
                 "Use FOCUS_BUDDY_SPEECH=openai instead."
+            )
+
+        if self.uses_landmarks:
+            from .perception.landmarks import default_sidecar_python
+
+            interpreter = Path(self.landmark_python or default_sidecar_python()).expanduser()
+            if not interpreter.exists():
+                errors.append(
+                    f"backend={self.backend.value} needs the landmark sidecar, but there is "
+                    f"no interpreter at {interpreter}. Create it with:\n"
+                    "    python tools/setup_landmark_sidecar.py\n"
+                    "MediaPipe needs its own environment because its working API requires "
+                    "numpy<2, while reachy-mini and opencv-python require numpy>=2."
+                )
+
+        if self.backend is Backend.EDGE:
+            self.warnings.append(
+                "Edge mode measures face-touching, nail-biting, gaze and presence from "
+                "landmark geometry; no model runs, so phone use is not detected and posture "
+                "is not measured. Use FOCUS_BUDDY_BACKEND=cloud to add them back."
+            )
+
+        if self.backend is Backend.EDGE_VLM:
+            self.warnings.append(
+                "backend=edge-vlm scored at chance on a labelled set and takes seconds per "
+                "frame. FOCUS_BUDDY_BACKEND=edge is local, faster and measured."
             )
 
         if self.speech is SpeechEngine.NONE:

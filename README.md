@@ -68,6 +68,7 @@ Everything is set through environment variables, usually via `.env`. See
 |---|---|---|
 | `OPENAI_API_KEY` | — | required unless you run fully local on a Mac |
 | `FOCUS_BUDDY_BACKEND` | `cloud` | `cloud` or `edge` (see below) |
+| `FOCUS_BUDDY_LANDMARK_PYTHON` | auto | interpreter for the landmark sidecar |
 | `FOCUS_BUDDY_SPEECH` | `openai` | `openai`, `macos`, or `none` |
 | `FOCUS_BUDDY_NUDGE_COOLDOWN_S` | `60` | minimum quiet time between nudges |
 | `FOCUS_BUDDY_USE_LLM_NUDGES` | `false` | let a model rephrase nudges |
@@ -91,6 +92,79 @@ explicitly with `FOCUS_BUDDY_SPEECH=macos` when you are running on a Mac and wou
 spend API calls on speech.
 
 `none` keeps the buddy watching but silent; nudges are written to the log.
+
+### Contact habits are measured, not described
+
+Face-touching and nail-biting are distance questions, so they are answered with
+landmark geometry rather than by a vision model. On a labelled set of 24 frames from
+a Reachy Mini, every small VLM tried scored at chance — SmolVLM2-2.2B, Qwen2-VL-2B and
+Qwen2.5-VL-3B each answered "yes, touching" on *every* frame, including the ones with
+hands in the user's lap. Hand-to-face distance separates the same frames perfectly:
+
+| | face-touch accuracy | per frame |
+|---|---|---|
+| SmolVLM2-2.2B-4bit | 8/16 (chance) | 13,300 ms |
+| Qwen2-VL-2B-4bit | 8/16 (chance) | 4,500 ms |
+| Qwen2.5-VL-3B-4bit | 8/16 (chance) | 3,100 ms |
+| landmark geometry | **24/24** | **~50 ms** |
+
+Thresholds are ratios of the face width, so they do not care how close you sit or what
+resolution the camera runs at. They live in `perception/landmarks.py` with the measured
+distances that produced them.
+
+MediaPipe runs in **its own interpreter**. It has to: the only MediaPipe API that works
+on Apple Silicon is the legacy `solutions` one (the Tasks API aborts in
+`DrishtiMetalHelper`), and that requires `numpy<2`, while `reachy-mini` requires
+`numpy>=2.2.5`. There is no overlap, so MediaPipe gets a separate venv and talks over a
+pipe. Build it once:
+
+```bash
+python tools/setup_landmark_sidecar.py
+```
+
+Then pick a backend that uses it:
+
+```bash
+focus-buddy --backend edge         # geometry only, nothing leaves the machine
+```
+
+What each backend measures:
+
+| | contact habits | gaze | at desk | phone | posture | per frame |
+|---|---|---|---|---|---|---|
+| `edge` | geometry | geometry | geometry | — | — | **~0.05 s** |
+| `cloud` | cloud | cloud | cloud | cloud | cloud | ~1.5-3 s |
+| `edge-vlm` | *(at chance)* | *(at chance)* | *(at chance)* | *(at chance)* | — | ~7.5 s |
+
+`edge-vlm` is the old quantised-VLM backend. It is kept because it runs, not because it
+works: see the table further down. Use `edge`.
+
+Gaze comes from where the irises sit inside the eyes; being at the desk comes from
+whether a face or a body is found at all, which is what separates "turned away" from
+"got up". Measured over 24 labelled frames: gaze 23/24, at-desk 41/43. Note the margin
+is nothing like the contact one — a head turned away while the eyes stay put reads as
+screen work. That is tolerable because gaze never triggers a nudge; it only feeds the
+spoken summary.
+
+`straight_posture` is deliberately left unmeasured. The obvious metric, neck length over
+shoulder width, moves when the body rotates rather than when the back bends, so it would
+report posture changes that are really just turning. It needs a rotation-invariant scale
+and its own labelled frames.
+
+`edge` never calls OpenAI and runs anywhere MediaPipe does.
+
+**There is no local phone detection, and that is a measured decision.** On 8 frames of a
+phone plainly in hand against 8 without, the local 2.2B VLM scored 0/8 true positives with
+the prose prompt (it always answers "no phone") and 8/8 true positives but 5/8 false
+positives with a labelled one — it can be pushed to detect or to stay quiet, but not to
+discriminate. `gpt-4o-mini` scored 16/16 on the same frames. So phone use is either
+answered by the cloud or not at all, and `edge` chooses not at all.
+
+Worth knowing if you want to revisit it: a hand raised holding a phone is geometrically
+distinctive — 1.50-1.64 face widths from the face box across all eight frames, against
+0.00 while touching the face and 0.5+ or no hand at all while typing. That is enough of a
+signal to gate an expensive call on, so a backend that only asks the cloud when a hand is
+raised is a plausible future addition.
 
 ### Cloud vs edge
 
@@ -129,6 +203,7 @@ model is being shown; if detection is behaving strangely, look there first.
 |---|---|
 | `observations.py` | `Observation` and `Habit` — the typed result every backend returns |
 | `perception/` | frame → `Observation`. `framing` crops, `captions` classifies prose |
+| `perception/landmarks.py` | hand-to-face geometry, and the MediaPipe sidecar client |
 | `brain/` | optional LLM rephrasing of a nudge |
 | `nudges.py` | nudge templates and the validation a model's output must pass |
 | `memory.py` | per-day episode counters and the spoken summary |
@@ -157,7 +232,7 @@ paraphrased by a model that could get them wrong.
 
 ```bash
 pip install -e . --group dev
-pytest                    # 80 tests, no network, no camera, no models
+pytest                    # 153 tests, no network, no camera, no models
 ruff check . && ruff format --check .
 mypy src/
 ```
