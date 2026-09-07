@@ -33,6 +33,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      # reachy-mini pulls in PyGObject for GStreamer. It publishes no Linux
+      # wheels, so pip builds it from source and needs cairo and
+      # gobject-introspection headers that the runner does not ship. The
+      # girepository-2.0 line is best-effort: newer PyGObject wants it, and the
+      # package does not exist on every runner image.
+      - name: Install PyGObject build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libcairo2-dev libgirepository1.0-dev
+          sudo apt-get install -y libgirepository-2.0-dev || true
       - run: pip install -e . --group dev
       - run: pytest -q
 
@@ -43,6 +53,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      # reachy-mini pulls in PyGObject for GStreamer. It publishes no Linux
+      # wheels, so pip builds it from source and needs cairo and
+      # gobject-introspection headers that the runner does not ship. The
+      # girepository-2.0 line is best-effort: newer PyGObject wants it, and the
+      # package does not exist on every runner image.
+      - name: Install PyGObject build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libcairo2-dev libgirepository1.0-dev
+          sudo apt-get install -y libgirepository-2.0-dev || true
       - run: pip install -e . --group dev
       - run: mypy src/
 
@@ -55,5 +75,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      # reachy-mini pulls in PyGObject for GStreamer. It publishes no Linux
+      # wheels, so pip builds it from source and needs cairo and
+      # gobject-introspection headers that the runner does not ship. The
+      # girepository-2.0 line is best-effort: newer PyGObject wants it, and the
+      # package does not exist on every runner image.
+      - name: Install PyGObject build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libcairo2-dev libgirepository1.0-dev
+          sudo apt-get install -y libgirepository-2.0-dev || true
       - run: pip install "reachy-mini>=1.8.0,<1.9"
       - run: reachy-mini-app-assistant check .
