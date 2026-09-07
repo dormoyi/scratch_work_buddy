@@ -5,7 +5,7 @@ colorFrom: indigo
 colorTo: pink
 sdk: static
 pinned: false
-short_description: A Reachy Mini that notices when you touch your face and says something.
+short_description: Notices the habits that break your focus, out loud.
 tags:
   - reachy_mini
   - reachy_mini_python_app
