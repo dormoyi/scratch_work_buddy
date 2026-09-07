@@ -31,8 +31,10 @@ def setup_logging(verbose: bool = False) -> None:
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
-    # These libraries log a request line per frame at INFO, which buries ours.
-    for noisy in ("httpx", "openai", "urllib3"):
+    # These libraries bury our lines under per-frame chatter: one request line
+    # per frame from the HTTP clients, and a joint-pose frame at ~50Hz from the
+    # robot SDK's websocket, which at -v is thousands of lines a minute.
+    for noisy in ("httpx", "httpcore", "openai", "urllib3", "websockets"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
@@ -64,15 +66,31 @@ def _report(settings: Settings) -> list[str]:
 class FocusBuddy(ReachyMiniApp):
     """Reachy Mini app that watches for focus-breaking habits and nudges you."""
 
+    def __init__(self, running_on_wireless: bool = False, settings: Settings | None = None) -> None:
+        """Create the app.
+
+        The dashboard constructs this with no arguments, so ``settings`` defaults
+        to the environment. The CLI passes its own already-validated settings in,
+        which is what makes flags like ``--debug`` apply on the robot and not
+        only under ``--desktop``.
+        """
+        super().__init__(running_on_wireless)
+        self._settings = settings
+
     def run(self, reachy_mini: ReachyMini, stop_event: threading.Event) -> None:
         """Run the focus loop until the dashboard stops the app."""
         from .hardware import ReachyBody
 
-        settings = Settings.from_env()
-        errors = _report(settings)
-        if errors:
-            # Surfaced by the dashboard through ReachyMiniApp.error.
-            raise RuntimeError("Focus Buddy is not configured correctly:\n- " + "\n- ".join(errors))
+        settings = self._settings
+        if settings is None:
+            # Dashboard launch: nothing has read the environment for us yet.
+            settings = Settings.from_env()
+            errors = _report(settings)
+            if errors:
+                # Surfaced by the dashboard through ReachyMiniApp.error.
+                raise RuntimeError(
+                    "Focus Buddy is not configured correctly:\n- " + "\n- ".join(errors)
+                )
 
         body = ReachyBody(reachy_mini)
         loop = build_loop(body, settings)
@@ -147,7 +165,8 @@ def main(argv: list[str] | None = None) -> int:
     if not args.desktop:
         # Without --desktop, defer to the app framework so the robot connection,
         # media lock and cleanup are handled exactly as the dashboard does it.
-        app = FocusBuddy()
+        # Settings are handed over rather than re-read, so CLI flags survive.
+        app = FocusBuddy(settings=settings)
         try:
             app.wrapped_run()
         except KeyboardInterrupt:
