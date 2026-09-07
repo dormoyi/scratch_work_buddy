@@ -21,6 +21,9 @@ class FakeApp:
     """Stands in for FocusBuddy, recording how main() constructed it."""
 
     instances: list[FakeApp] = []
+    # main() names this in the "waiting for the settings page" message, so the
+    # stand-in has to carry it too.
+    custom_app_url = "http://0.0.0.0:7860/"
 
     def __init__(self, running_on_wireless: bool = False, settings: Settings | None = None):
         self.settings = settings
@@ -65,10 +68,25 @@ class TestRobotPathHonoursFlags:
         assert main_module.main(["--backend", "cloud"]) == 0
         assert captured_app[0].settings.backend is Backend.CLOUD
 
-    def test_bad_configuration_never_reaches_the_robot(self, monkeypatch, captured_app):
+    def test_bad_configuration_still_starts_the_app(self, monkeypatch, captured_app):
+        """The dashboard starts apps with `python -m focus_buddy.main`.
+
+        Exiting here is what made a fresh install unrecoverable: the settings
+        page that would supply the missing key lives inside the app, so the app
+        has to come up even when it cannot yet do any work.
+        """
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.setattr(Settings, "from_env", classmethod(lambda cls: cls()))
-        assert main_module.main([]) == 2
+        assert main_module.main([]) == 0
+        assert len(captured_app) == 1
+        # No settings handed over, so the app re-reads them as the page saves.
+        assert captured_app[0].settings is None
+
+    def test_desktop_still_fails_fast_on_bad_configuration(self, monkeypatch, captured_app):
+        """A person at a terminal gets an error, not a wait for a page."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.setattr(Settings, "from_env", classmethod(lambda cls: cls()))
+        assert main_module.main(["--desktop"]) == 2
         assert captured_app == []
 
 

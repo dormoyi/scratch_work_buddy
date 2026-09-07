@@ -191,21 +191,35 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = settings_from_args(args)
     errors = _report(settings)
-    if errors:
-        for error in errors:
-            logger.error(error)
-        return 2
 
     if not args.desktop:
         # Without --desktop, defer to the app framework so the robot connection,
         # media lock and cleanup are handled exactly as the dashboard does it.
+        #
+        # This is also the path the dashboard itself takes: it starts an app with
+        # `python -m <entry point module>`, which for us is this file. So it must
+        # survive a bad configuration rather than exiting -- an app that exits
+        # cannot serve the settings page that would fix it, which is exactly how
+        # a fresh install used to fail with code 2 and no way forward. Passing no
+        # settings makes FocusBuddy wait and re-read them as the page saves.
+        if errors:
+            for error in errors:
+                logger.error(error)
+            logger.error("Waiting for the settings page at %s", FocusBuddy.custom_app_url)
         # Settings are handed over rather than re-read, so CLI flags survive.
-        app = FocusBuddy(settings=settings)
+        app = FocusBuddy(settings=None if errors else settings)
         try:
             app.wrapped_run()
         except KeyboardInterrupt:
             app.stop()
         return 0
+
+    # --desktop is a person at a terminal with flags and a shell, so it fails
+    # fast instead of waiting for a page nobody is going to open.
+    if errors:
+        for error in errors:
+            logger.error(error)
+        return 2
 
     from .hardware import DesktopBody
 
