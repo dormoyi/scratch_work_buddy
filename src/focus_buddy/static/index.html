@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Focus Buddy settings</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1a1a1f; --muted:#63636e; --bg:#fbfbfd;
+          --card:#fff; --line:#e3e3ea; --accent:#4f46e5; --ok:#0f7b4f; --bad:#b42318; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#ececf1; --muted:#a0a0ae; --bg:#141419; --card:#1c1c23;
+            --line:#2e2e38; --accent:#8b85f5; --ok:#4ade80; --bad:#f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--fg);
+         font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 560px; margin: 0 auto; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          padding:18px; margin-bottom:14px; }
+  label { display:block; font-weight:600; margin:14px 0 6px; }
+  label:first-child { margin-top:0; }
+  input, select { width:100%; padding:9px 11px; border:1px solid var(--line);
+                  border-radius:8px; background:var(--bg); color:var(--fg); font-size:15px; }
+  small { display:block; color:var(--muted); margin-top:5px; }
+  button { margin-top:18px; width:100%; padding:11px; border:0; border-radius:8px;
+           background:var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.55; cursor:default; }
+  #status { margin-bottom:14px; padding:12px 14px; border-radius:10px;
+            border:1px solid var(--line); background:var(--card); }
+  .ok  { color:var(--ok); font-weight:600; }
+  .bad { color:var(--bad); font-weight:600; }
+  ul { margin:8px 0 0; padding-left:20px; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>👀 Focus Buddy</h1>
+  <p class="sub">Notices the habits that break your focus, and says so.</p>
+
+  <div id="status">Loading…</div>
+
+  <div class="card">
+    <label for="backend">How it sees</label>
+    <select id="backend"></select>
+    <small id="backend-help"></small>
+
+    <label for="speech">How it speaks</label>
+    <select id="speech"></select>
+
+    <label for="key">OpenAI API key</label>
+    <input id="key" type="password" placeholder="sk-…" autocomplete="off" />
+    <small id="key-help">Only needed for the cloud backend or OpenAI speech.</small>
+
+    <label for="cooldown">Seconds between nudges</label>
+    <input id="cooldown" type="number" min="3" step="1" placeholder="60" />
+
+    <button id="save">Save</button>
+  </div>
+</main>
+
+<script>
+const HELP = {
+  "edge": "Landmark geometry on this machine. No API key, no model, ~0.05s a frame. Detects face-touching, nail-biting, gaze and whether you are at the desk — but not phone use. Needs the sidecar: run focus-buddy-setup-sidecar once.",
+  "cloud": "An OpenAI vision model. Detects everything including phone use. Needs an API key and sends each frame to OpenAI.",
+  "edge-vlm": "The old local vision model. Kept because it runs, not because it works: it scored at chance on a labelled set and takes seconds per frame."
+};
+
+const $ = (id) => document.getElementById(id);
+
+function fill(sel, options, value) {
+  sel.innerHTML = "";
+  for (const o of options) {
+    const el = document.createElement("option");
+    el.value = o; el.textContent = o;
+    if (o === value) el.selected = true;
+    sel.appendChild(el);
+  }
+}
+
+function render(s) {
+  fill($("backend"), s.backends, s.backend);
+  fill($("speech"), s.speech_engines, s.speech);
+  $("cooldown").value = s.nudge_cooldown_s;
+  $("key").placeholder = s.has_api_key ? `saved (${s.api_key_hint})` : "sk-…";
+  $("backend-help").textContent = HELP[$("backend").value] || "";
+
+  const box = $("status");
+  if (s.ready) {
+    box.innerHTML = `<span class="ok">Ready.</span> Focus Buddy will start watching.`;
+  } else {
+    box.innerHTML = `<span class="bad">Not configured yet.</span><ul>`
+      + s.errors.map(e => `<li>${e.replace(/</g, "&lt;")}</li>`).join("") + `</ul>`;
+  }
+  if (s.warnings && s.warnings.length) {
+    box.innerHTML += `<ul>` + s.warnings.map(w => `<li>${w.replace(/</g, "&lt;")}</li>`).join("") + `</ul>`;
+  }
+}
+
+async function load() {
+  render(await (await fetch("api/settings")).json());
+}
+
+$("backend").addEventListener("change", () => {
+  $("backend-help").textContent = HELP[$("backend").value] || "";
+});
+
+$("save").addEventListener("click", async () => {
+  const btn = $("save");
+  btn.disabled = true; btn.textContent = "Saving…";
+  const body = {
+    FOCUS_BUDDY_BACKEND: $("backend").value,
+    FOCUS_BUDDY_SPEECH: $("speech").value,
+    FOCUS_BUDDY_NUDGE_COOLDOWN_S: $("cooldown").value,
+  };
+  // Blank means "keep what is already saved", not "clear it".
+  if ($("key").value.trim()) body.OPENAI_API_KEY = $("key").value.trim();
+  render(await (await fetch("api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })).json());
+  $("key").value = "";
+  btn.disabled = false; btn.textContent = "Save";
+});
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>

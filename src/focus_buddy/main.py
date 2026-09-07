@@ -63,8 +63,17 @@ def _report(settings: Settings) -> list[str]:
     return errors
 
 
+# How often to re-read the configuration while waiting for the settings page.
+_CONFIG_POLL_S = 2.0
+
+
 class FocusBuddy(ReachyMiniApp):
     """Reachy Mini app that watches for focus-breaking habits and nudges you."""
+
+    # Serving this makes the dashboard show a settings page for the app. Without
+    # it there is no way to supply an API key to an app-store install, which is
+    # what made the first version exit immediately on a fresh robot.
+    custom_app_url = "http://0.0.0.0:7860/"
 
     def __init__(self, running_on_wireless: bool = False, settings: Settings | None = None) -> None:
         """Create the app.
@@ -76,6 +85,34 @@ class FocusBuddy(ReachyMiniApp):
         """
         super().__init__(running_on_wireless)
         self._settings = settings
+        # Only the dashboard needs the page; the CLI has flags and a shell.
+        if settings is None:
+            from .settings_page import attach
+
+            attach(self.settings_app)
+
+    def _await_configuration(self, stop_event: threading.Event) -> Settings | None:
+        """Block until the settings page yields a usable configuration.
+
+        Returns None if the app is stopped first. Waiting rather than raising is
+        the whole point: an unconfigured app has to stay alive long enough for
+        someone to open its settings page and type a key into it.
+        """
+        announced = False
+        while not stop_event.is_set():
+            settings = Settings.from_env()
+            errors = _report(settings)
+            if not errors:
+                return settings
+            if not announced:
+                # Also surfaced by the dashboard through ReachyMiniApp.error.
+                self.error = "Focus Buddy needs configuring:\n- " + "\n- ".join(errors)
+                logger.error(
+                    "%s\nWaiting for the settings page at %s", self.error, self.custom_app_url
+                )
+                announced = True
+            stop_event.wait(_CONFIG_POLL_S)
+        return None
 
     def run(self, reachy_mini: ReachyMini, stop_event: threading.Event) -> None:
         """Run the focus loop until the dashboard stops the app."""
@@ -84,13 +121,10 @@ class FocusBuddy(ReachyMiniApp):
         settings = self._settings
         if settings is None:
             # Dashboard launch: nothing has read the environment for us yet.
-            settings = Settings.from_env()
-            errors = _report(settings)
-            if errors:
-                # Surfaced by the dashboard through ReachyMiniApp.error.
-                raise RuntimeError(
-                    "Focus Buddy is not configured correctly:\n- " + "\n- ".join(errors)
-                )
+            settings = self._await_configuration(stop_event)
+            if settings is None:
+                return
+            self.error = ""
 
         body = ReachyBody(reachy_mini)
         loop = build_loop(body, settings)

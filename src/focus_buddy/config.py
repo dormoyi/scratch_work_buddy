@@ -29,6 +29,15 @@ class SpeechEngine(str, Enum):
     NONE = "none"
 
 
+def user_config_path() -> Path:
+    """Where the dashboard settings page saves what the user typed.
+
+    Not the package directory: an app installed from the app store lives in
+    site-packages, which is the wrong place to write to and may be read-only.
+    """
+    return Path.home() / ".config" / "focus_buddy" / "config.env"
+
+
 def _env_bool(name: str, default: bool = False) -> bool:
     raw = os.getenv(name)
     if raw is None:
@@ -97,6 +106,11 @@ class Settings:
         # and finds nothing at all once installed as a wheel. Anchoring to the
         # working directory makes both installs behave the same.
         load_dotenv(find_dotenv(usecwd=True))
+        # Then whatever the dashboard settings page saved. override=False so a
+        # developer's .env and any real environment variable still win.
+        saved = user_config_path()
+        if saved.exists():
+            load_dotenv(saved, override=False)
 
         backend = Backend(os.getenv("FOCUS_BUDDY_BACKEND", Backend.CLOUD.value).lower())
         speech = SpeechEngine(os.getenv("FOCUS_BUDDY_SPEECH", SpeechEngine.OPENAI.value).lower())

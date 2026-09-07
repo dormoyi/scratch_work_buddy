@@ -229,9 +229,18 @@ def default_sidecar_python() -> Path:
 
     Derived rather than spelled out a second time: the setup command and the
     lookup have to agree, and two literals eventually will not.
+
+    Falls back to the platform's layout rather than the other one when neither
+    exists, so the "no interpreter at ..." error names a plausible path instead
+    of pointing a mac user at Scripts/python.exe.
     """
     posix = default_sidecar_dir() / "bin" / "python"
-    return posix if posix.exists() else default_sidecar_dir() / "Scripts" / "python.exe"
+    windows = default_sidecar_dir() / "Scripts" / "python.exe"
+    if posix.exists():
+        return posix
+    if windows.exists():
+        return windows
+    return windows if os.name == "nt" else posix
 
 
 def sidecar_script() -> Path:

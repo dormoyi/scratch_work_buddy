@@ -18,6 +18,7 @@ which talks to it over a pipe.
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -34,7 +35,12 @@ REQUIREMENTS = ("mediapipe==0.10.14", "numpy<2", "pillow>=10.0")
 def sidecar_python(venv_dir: Path) -> Path:
     """Locate the interpreter inside a sidecar venv, on either layout."""
     posix = venv_dir / "bin" / "python"
-    return posix if posix.exists() else venv_dir / "Scripts" / "python.exe"
+    windows = venv_dir / "Scripts" / "python.exe"
+    if posix.exists():
+        return posix
+    if windows.exists():
+        return windows
+    return windows if os.name == "nt" else posix
 
 
 def build(path: Path, recreate: bool = False) -> Path:
