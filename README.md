@@ -17,15 +17,15 @@ tags:
 ![Focus Buddy: a Reachy Mini watching someone reach for their phone](media/hero.jpg)
 
 A [Reachy Mini](https://huggingface.co/pollen-robotics) app that sits on your desk, watches
-for the small habits that break your focus — touching your face, biting your nails, drifting
-onto your phone — and says something about it. Once an hour it tells you how the day is going.
+for the small habits that break your focus - touching your face, biting your nails, drifting
+onto your phone - and says something about it. Once an hour it tells you how the day is going.
 
 **It runs offline and free.** The default backend uses no model at all: face-touching and
-nail-biting are a distance question, so it measures the distance — 24/24 accurate at ~50 ms a
+nail-biting are a distance question, so it measures the distance - 24/24 accurate at ~50 ms a
 frame, with no API key and no frame ever leaving the machine. Most apps of this kind bill you
 per frame to a hosted vision model; this one does not have to.
 
-▶ **[Watch the demo](media/demo.mp4)** (28 s) — the phone comes out, the Mini notices.
+▶ **[Watch the demo](media/demo.mp4)** (28 s) - the phone comes out, the Mini notices.
 
 It is deliberately not a productivity dashboard. There is no score, nothing is uploaded, and
 the only record is a per-day tally that resets at midnight.
@@ -76,7 +76,7 @@ Everything is set through environment variables, usually via `.env`. See
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `OPENAI_API_KEY` | — | required unless you run fully local on a Mac |
+| `OPENAI_API_KEY` | - | required unless you run fully local on a Mac |
 | `FOCUS_BUDDY_BACKEND` | `cloud` | `cloud` or `edge` (see below) |
 | `FOCUS_BUDDY_LANDMARK_PYTHON` | auto | interpreter for the landmark sidecar |
 | `FOCUS_BUDDY_SPEECH` | `openai` | `openai`, `macos`, or `none` |
@@ -107,7 +107,7 @@ spend API calls on speech.
 
 Face-touching and nail-biting are distance questions, so they are answered with
 landmark geometry rather than by a vision model. On a labelled set of 24 frames from
-a Reachy Mini, every small VLM tried scored at chance — SmolVLM2-2.2B, Qwen2-VL-2B and
+a Reachy Mini, every small VLM tried scored at chance - SmolVLM2-2.2B, Qwen2-VL-2B and
 Qwen2.5-VL-3B each answered "yes, touching" on *every* frame, including the ones with
 hands in the user's lap. Hand-to-face distance separates the same frames perfectly:
 
@@ -145,9 +145,9 @@ What each backend measures:
 
 | | contact habits | gaze | at desk | phone | posture | per frame |
 |---|---|---|---|---|---|---|
-| `edge` | geometry | geometry | geometry | — | — | **~0.05 s** |
+| `edge` | geometry | geometry | geometry | - | - | **~0.05 s** |
 | `cloud` | cloud | cloud | cloud | cloud | cloud | ~1.5-3 s |
-| `edge-vlm` | *(at chance)* | *(at chance)* | *(at chance)* | *(at chance)* | — | ~7.5 s |
+| `edge-vlm` | *(at chance)* | *(at chance)* | *(at chance)* | *(at chance)* | - | ~7.5 s |
 
 `edge-vlm` is the old quantised-VLM backend. It is kept because it runs, not because it
 works: see the table further down. Use `edge`.
@@ -155,7 +155,7 @@ works: see the table further down. Use `edge`.
 Gaze comes from where the irises sit inside the eyes; being at the desk comes from
 whether a face or a body is found at all, which is what separates "turned away" from
 "got up". Measured over 24 labelled frames: gaze 23/24, at-desk 41/43. Note the margin
-is nothing like the contact one — a head turned away while the eyes stay put reads as
+is nothing like the contact one - a head turned away while the eyes stay put reads as
 screen work. That is tolerable because gaze never triggers a nudge; it only feeds the
 spoken summary.
 
@@ -169,12 +169,12 @@ and its own labelled frames.
 **There is no local phone detection, and that is a measured decision.** On 8 frames of a
 phone plainly in hand against 8 without, the local 2.2B VLM scored 0/8 true positives with
 the prose prompt (it always answers "no phone") and 8/8 true positives but 5/8 false
-positives with a labelled one — it can be pushed to detect or to stay quiet, but not to
+positives with a labelled one - it can be pushed to detect or to stay quiet, but not to
 discriminate. `gpt-4o-mini` scored 16/16 on the same frames. So phone use is either
 answered by the cloud or not at all, and `edge` chooses not at all.
 
 Worth knowing if you want to revisit it: a hand raised holding a phone is geometrically
-distinctive — 1.50-1.64 face widths from the face box across all eight frames, against
+distinctive - 1.50-1.64 face widths from the face box across all eight frames, against
 0.00 while touching the face and 0.5+ or no hand at all while typing. That is enough of a
 signal to gate an expensive call on, so a backend that only asks the cloud when a hand is
 raised is a plausible future addition.
@@ -183,7 +183,7 @@ raised is a plausible future addition.
 
 > [!IMPORTANT]
 > **Edge mode requires macOS on Apple Silicon. There is no supported way to run it anywhere
-> else** — not on Linux, not on Windows, and *not on the Raspberry Pi inside a Reachy Mini
+> else** - not on Linux, not on Windows, and *not on the Raspberry Pi inside a Reachy Mini
 > wireless*. It runs quantised models through [MLX](https://github.com/ml-explore/mlx), which
 > is built for Apple GPUs and publishes no ARM-Linux or x86-Linux builds. If you are running
 > the app on the robot itself, you want `cloud`.
@@ -191,10 +191,10 @@ raised is a plausible future addition.
 **`cloud`** (default) sends each frame to an OpenAI vision model. Works on every platform,
 needs a network connection and an API key, and costs roughly a fraction of a cent per frame.
 
-**`edge`** is landmark geometry and needs no model, no key and no extra — see the section
+**`edge`** is landmark geometry and needs no model, no key and no extra - see the section
 above. **`edge-vlm`** is the older local-VLM path, kept for comparison: a 4-bit SmolVLM2-2.2B
 for vision and optionally a 4-bit Llama-3.2-1B to phrase nudges. It is the only backend that
-needs the optional dependency, and it is not recommended — on a labelled set it scored at
+needs the optional dependency, and it is not recommended - on a labelled set it scored at
 chance for every habit.
 
 ```bash
@@ -204,7 +204,7 @@ FOCUS_BUDDY_BACKEND=edge-vlm focus-buddy --desktop --speech macos
 
 The first run downloads several gigabytes of weights. Set `HF_HOME` to control where they
 land. On an 8GB Mac, expect a few seconds per frame and keep `FOCUS_BUDDY_USE_LLM_NUDGES=false`
-unless you have memory to spare — the two models compete for unified memory.
+unless you have memory to spare - the two models compete for unified memory.
 
 Edge mode does not send the whole frame to the model. It finds your face with an OpenCV Haar
 cascade and crops around it, biased downward and toward the direction your head is turned, so
@@ -216,7 +216,7 @@ model is being shown; if detection is behaving strangely, look there first.
 
 | Module | Responsibility |
 |---|---|
-| `observations.py` | `Observation` and `Habit` — the typed result every backend returns |
+| `observations.py` | `Observation` and `Habit` - the typed result every backend returns |
 | `perception/` | frame → `Observation`. `framing` crops, `captions` classifies prose |
 | `perception/landmarks.py` | hand-to-face geometry, and the MediaPipe sidecar client |
 | `settings_page.py` | the dashboard settings page: what it saves, and live run state |
@@ -237,7 +237,7 @@ Two design choices worth knowing about:
 
 **Nudges are templates by default.** A language model can rephrase them
 (`FOCUS_BUDDY_USE_LLM_NUDGES=true`), but anything it produces has to pass `nudges.is_valid`
-first — right length, actually mentions the habit it is supposed to be about, and does not
+first - right length, actually mentions the habit it is supposed to be about, and does not
 contradict the frame. Whatever fails is replaced by the template. A buddy that is confidently
 wrong about you is worse than one that repeats itself.
 
@@ -276,7 +276,7 @@ counts live in memory only and reset at midnight.
 
 ## Contributing
 
-Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Issues and pull requests are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

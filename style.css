@@ -81,7 +81,7 @@ code {
 }
 
 .container {
-	max-width: 52rem;
+	max-width: 64rem;
 	margin: 0 auto;
 	padding: 2rem 1.5rem 3rem;
 	display: grid;
@@ -215,8 +215,8 @@ pre code {
 .hero-art {
 	display: block;
 	width: 100%;
-	max-width: 720px;
-	margin: 0 auto 26px;
+	max-width: 440px;
+	margin: 0 auto 22px;
 	border-radius: var(--radius);
 	border: 1px solid var(--border);
 	box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
