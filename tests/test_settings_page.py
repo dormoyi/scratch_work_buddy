@@ -107,3 +107,67 @@ class TestConfigLoading:
         settings_page.save({"FOCUS_BUDDY_BACKEND": "cloud"}, config_file)
         monkeypatch.setenv("FOCUS_BUDDY_BACKEND", "edge")
         assert Settings.from_env().backend is Backend.EDGE
+
+
+class TestRuntimeStatus:
+    """The page has to answer "is it running?", not just "is it configured?"."""
+
+    @staticmethod
+    def _loop(seconds_since_frame, frames=5):
+        import time
+        import types
+
+        from focus_buddy.observations import Habit
+
+        memory = types.SimpleNamespace(counters={Habit.TOUCHING_FACE: 2}, elapsed_s=300.0)
+        return types.SimpleNamespace(
+            last_tick_at=(
+                None if seconds_since_frame is None else time.time() - seconds_since_frame
+            ),
+            frames_seen=frames,
+            memory=memory,
+        )
+
+    def test_starts_stopped(self):
+        runtime = settings_page.Runtime()
+        assert runtime.snapshot()["state"] == "stopped"
+
+    def test_waiting_carries_the_reason(self):
+        runtime = settings_page.Runtime()
+        runtime.waiting("OPENAI_API_KEY is not set")
+        snapshot = runtime.snapshot()
+        assert snapshot["state"] == "waiting"
+        assert "OPENAI_API_KEY" in snapshot["detail"]
+
+    def test_a_fresh_frame_reads_as_watching(self):
+        runtime = settings_page.Runtime()
+        runtime.watching(self._loop(1.2))
+        snapshot = runtime.snapshot()
+        assert snapshot["state"] == "watching"
+        assert snapshot["frames_seen"] == 5
+        assert snapshot["habits_today"] == {"face-touching": 2}
+
+    def test_a_stale_frame_reads_as_stalled(self):
+        """Alive but blind is a different problem from stopped, and was invisible."""
+        runtime = settings_page.Runtime()
+        runtime.watching(self._loop(settings_page.STALE_FRAME_AFTER_S + 10))
+        snapshot = runtime.snapshot()
+        assert snapshot["state"] == "stalled"
+        assert "no camera frame" in snapshot["detail"]
+
+    def test_no_frame_yet_is_not_stalled(self):
+        """Startup should not look like a fault."""
+        runtime = settings_page.Runtime()
+        runtime.watching(self._loop(None, frames=0))
+        snapshot = runtime.snapshot()
+        assert snapshot["state"] == "watching"
+        assert "first frame" in snapshot["detail"]
+
+    def test_stopping_drops_the_loop(self):
+        runtime = settings_page.Runtime()
+        runtime.watching(self._loop(1.0))
+        runtime.stopped()
+        assert runtime.snapshot() == {"state": "stopped", "detail": ""}
+
+    def test_current_state_includes_runtime(self, config_file):
+        assert "runtime" in settings_page.current_state()

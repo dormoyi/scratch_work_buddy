@@ -32,12 +32,41 @@
   .ok  { color:var(--ok); font-weight:600; }
   .bad { color:var(--bad); font-weight:600; }
   ul { margin:8px 0 0; padding-left:20px; color:var(--muted); }
+
+  /* The running indicator: the first thing on the page, deliberately. */
+  .live { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+          background:var(--card); border:1px solid var(--line);
+          border-radius:12px; padding:14px 16px; margin-bottom:14px; }
+  .dot { width:11px; height:11px; border-radius:50%; flex:0 0 auto;
+         background:var(--muted); box-shadow:0 0 0 3px transparent; }
+  .dot.ok   { background:var(--ok);  box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+  .dot.warn { background:#d97706;    box-shadow:0 0 0 3px color-mix(in srgb, #d97706 25%, transparent); }
+  .dot.off  { background:var(--muted); }
+  #live-text { font-weight:700; font-size:16px; }
+  .live-sub { color:var(--muted); font-size:13px; width:100%; padding-left:21px; }
+
+  .badge { font-size:11px; font-weight:700; text-transform:uppercase;
+           letter-spacing:.04em; padding:2px 7px; border-radius:20px;
+           border:1px solid var(--line); color:var(--muted); vertical-align:middle; }
+  .badge.ok   { color:var(--ok);  border-color:color-mix(in srgb, var(--ok) 45%, transparent); }
+  .badge.warn { color:#d97706;    border-color:color-mix(in srgb, #d97706 45%, transparent); }
+
+  .save-result { margin:10px 0 0; font-size:13px; min-height:1em; }
+  .save-result.ok   { color:var(--ok); }
+  .save-result.warn { color:#d97706; }
+  .save-result.bad  { color:var(--bad); }
 </style>
 </head>
 <body>
 <main>
   <h1>👀 Focus Buddy</h1>
   <p class="sub">Notices the habits that break your focus, and says so.</p>
+
+  <div id="live" class="live">
+    <span class="dot" id="dot"></span>
+    <span id="live-text">Checking…</span>
+    <span class="live-sub" id="live-sub"></span>
+  </div>
 
   <div id="status">Loading…</div>
 
@@ -49,7 +78,7 @@
     <label for="speech">How it speaks</label>
     <select id="speech"></select>
 
-    <label for="key">OpenAI API key</label>
+    <label for="key">OpenAI API key <span id="key-state" class="badge">checking…</span></label>
     <input id="key" type="password" placeholder="sk-…" autocomplete="off" />
     <small id="key-help">Only needed for the cloud backend or OpenAI speech.</small>
 
@@ -57,6 +86,7 @@
     <input id="cooldown" type="number" min="3" step="1" placeholder="60" />
 
     <button id="save">Save</button>
+    <p id="save-result" class="save-result"></p>
   </div>
 </main>
 
@@ -79,12 +109,47 @@ function fill(sel, options, value) {
   }
 }
 
-function render(s) {
-  fill($("backend"), s.backends, s.backend);
-  fill($("speech"), s.speech_engines, s.speech);
-  $("cooldown").value = s.nudge_cooldown_s;
+const LIVE = {
+  watching: ["ok",   "Running",             "the robot is watching"],
+  stalled:  ["warn", "Running, but blind",  "no camera frames arriving"],
+  waiting:  ["warn", "Not running yet",     "waiting on configuration"],
+  stopped:  ["off",  "Stopped",             "the app is not running"],
+};
+
+function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
+
+function renderLive(rt) {
+  const [cls, title, fallback] = LIVE[rt.state] || LIVE.stopped;
+  $("dot").className = `dot ${cls}`;
+  $("live-text").textContent = title;
+
+  const bits = [];
+  if (rt.detail) bits.push(rt.detail);
+  if (rt.state === "watching" || rt.state === "stalled") {
+    if (rt.frames_seen != null) bits.push(plural(rt.frames_seen, "frame") + " seen");
+    if (rt.seconds_since_frame != null) bits.push(`last ${rt.seconds_since_frame}s ago`);
+    const habits = rt.habits_today || {};
+    const spotted = Object.entries(habits).filter(([, n]) => n > 0)
+      .map(([k, n]) => `${k} ${n}×`);
+    if (spotted.length) bits.push("today: " + spotted.join(", "));
+  }
+  $("live-sub").textContent = bits.length ? bits.join(" · ") : fallback;
+}
+
+// Live parts only. Safe to call on a timer: it never touches a form control,
+// because doing so discarded whatever the user was in the middle of choosing.
+function renderStatus(s) {
+  renderLive(s.runtime || { state: "stopped" });
+
+  const key = $("key-state");
+  if (s.has_api_key) {
+    key.textContent = `saved ${s.api_key_hint}`;
+    key.className = "badge ok";
+  } else {
+    key.textContent = "not set";
+    key.className = "badge warn";
+  }
   $("key").placeholder = s.has_api_key ? `saved (${s.api_key_hint})` : "sk-…";
-  $("backend-help").textContent = HELP[$("backend").value] || "";
 
   const box = $("status");
   if (s.ready) {
@@ -98,8 +163,32 @@ function render(s) {
   }
 }
 
-async function load() {
-  render(await (await fetch("api/settings")).json());
+// The form. Only on first load and immediately after a save -- never on a timer.
+function renderForm(s) {
+  fill($("backend"), s.backends, s.backend);
+  fill($("speech"), s.speech_engines, s.speech);
+  $("cooldown").value = s.nudge_cooldown_s;
+  $("backend-help").textContent = HELP[$("backend").value] || "";
+}
+
+function render(s) {
+  renderStatus(s);
+  renderForm(s);
+}
+
+async function load(withForm) {
+  try {
+    const r = await fetch("api/settings");
+    if (!r.ok) throw new Error(`the app returned ${r.status} for api/settings`);
+    const state = await r.json();
+    withForm ? render(state) : renderStatus(state);
+  } catch (err) {
+    // Never leave the page claiming to load. If this endpoint is missing the
+    // app is running an older build, which is worth saying out loud.
+    $("status").innerHTML =
+      `<span class="bad">Cannot read settings.</span> ${err.message}.`
+      + ` The app may need restarting or updating.`;
+  }
 }
 
 $("backend").addEventListener("change", () => {
@@ -116,17 +205,41 @@ $("save").addEventListener("click", async () => {
   };
   // Blank means "keep what is already saved", not "clear it".
   if ($("key").value.trim()) body.OPENAI_API_KEY = $("key").value.trim();
-  render(await (await fetch("api/settings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })).json());
+  const sentKey = Boolean(body.OPENAI_API_KEY);
+  const result = $("save-result");
+  try {
+    const r = await fetch("api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(`the app returned ${r.status}`);
+    const state = await r.json();
+    render(state);
+    if (state.ready) {
+      // Ask the running app to pick the new settings up in place.
+      try { await fetch("api/reload", { method: "POST" }); } catch (e) { /* reported below */ }
+    }
+    // Confirm against what came back, not against the fact we sent something.
+    const saved = [];
+    if (sentKey) saved.push(state.has_api_key ? "API key saved" : "API key NOT saved");
+    saved.push(`backend ${state.backend}`, `speech ${state.speech}`,
+               `${state.nudge_cooldown_s}s between nudges`);
+    result.textContent = "Saved — " + saved.join(", ")
+      + (state.ready ? ". Applying now — the status above will show it restart."
+                     : ". Still not ready; see above.");
+    result.className = "save-result " + (state.ready ? "ok" : "warn");
+  } catch (err) {
+    result.textContent = `Could not save: ${err.message}`;
+    result.className = "save-result bad";
+  }
   $("key").value = "";
   btn.disabled = false; btn.textContent = "Save";
 });
 
-load();
-setInterval(load, 5000);
+load(true);
+// Status only. Passing the form here is what reset a half-made choice.
+setInterval(() => load(false), 5000);
 </script>
 </body>
 </html>

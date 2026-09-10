@@ -17,12 +17,89 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
 from .config import Backend, Settings, SpeechEngine, user_config_path
 
 logger = logging.getLogger(__name__)
+
+# A frame older than this means the loop is alive but not seeing anything, which
+# is a different problem from being stopped and worth showing differently.
+STALE_FRAME_AFTER_S = 20.0
+
+
+class Runtime:
+    """What the app is actually doing, for the settings page to report.
+
+    The page used to describe configuration only, so it could say "Ready" about
+    an app that was not running and had never seen a frame. Answering "is it
+    watching?" needs the running loop, not the settings.
+    """
+
+    def __init__(self) -> None:
+        """Start out stopped and attached to nothing."""
+        self.state = "stopped"
+        self.detail = ""
+        self._loop: Any = None
+        self._started_at: float | None = None
+        # Set by the settings page when saved values should take effect. The
+        # app watches it and rebuilds its backends rather than making the user
+        # stop and start the app by hand for every change.
+        self.reload_requested = threading.Event()
+
+    def waiting(self, detail: str) -> None:
+        """Record that the app is up but cannot work yet."""
+        self.state, self.detail, self._loop = "waiting", detail, None
+
+    def watching(self, loop: Any) -> None:
+        """Record the running focus loop, and read liveness from it."""
+        self.state, self.detail, self._loop = "watching", "", loop
+        self._started_at = time.time()
+
+    def stopped(self) -> None:
+        """Record that the app is shutting down."""
+        self.state, self.detail, self._loop = "stopped", "", None
+
+    def request_reload(self) -> None:
+        """Ask the running app to rebuild itself with the current settings."""
+        logger.info("Settings changed; asking the loop to restart")
+        self.reload_requested.set()
+
+    def snapshot(self) -> dict[str, Any]:
+        """Describe the running state for the page."""
+        loop = self._loop
+        info: dict[str, Any] = {"state": self.state, "detail": self.detail}
+        if loop is None:
+            return info
+
+        last = getattr(loop, "last_tick_at", None)
+        age = None if last is None else time.time() - last
+        info["frames_seen"] = getattr(loop, "frames_seen", 0)
+        info["seconds_since_frame"] = None if age is None else round(age, 1)
+        info["running_for_s"] = (
+            None if self._started_at is None else round(time.time() - self._started_at)
+        )
+        # Alive but blind: the camera stopped feeding us.
+        if age is not None and age > STALE_FRAME_AFTER_S:
+            info["state"] = "stalled"
+            info["detail"] = f"no camera frame for {age:.0f}s"
+        elif info["frames_seen"] == 0:
+            info["detail"] = "waiting for the first frame"
+
+        memory = getattr(loop, "memory", None)
+        if memory is not None:
+            info["habits_today"] = {
+                habit.label: count
+                for habit, count in sorted(memory.counters.items(), key=lambda kv: kv[0].value)
+            }
+            info["watching_for_s"] = round(memory.elapsed_s)
+        return info
+
+
+RUNTIME = Runtime()
 
 # Only these may be written from the page. An allowlist rather than "any
 # FOCUS_BUDDY_* key", so a typo cannot quietly create a setting nothing reads.
@@ -31,6 +108,7 @@ WRITABLE = (
     "FOCUS_BUDDY_BACKEND",
     "FOCUS_BUDDY_SPEECH",
     "FOCUS_BUDDY_NUDGE_COOLDOWN_S",
+    "FOCUS_BUDDY_WOBBLE",
 )
 
 
@@ -93,9 +171,11 @@ def current_state() -> dict[str, Any]:
         "backend": settings.backend.value,
         "speech": settings.speech.value,
         "nudge_cooldown_s": settings.nudge_cooldown_s,
+        "wobble": settings.wobble,
         # Never the key itself: this is served over plain HTTP on the LAN.
         "has_api_key": bool(key),
         "api_key_hint": f"…{key[-4:]}" if len(key) >= 4 else "",
+        "runtime": RUNTIME.snapshot(),
         "ready": not errors,
         "errors": errors,
         "warnings": settings.warnings,
@@ -119,3 +199,9 @@ def attach(settings_app: Any) -> None:
         """Save what the page submitted, then report the new state."""
         save(payload)
         return current_state()
+
+    @settings_app.post("/api/reload")
+    async def post_reload() -> dict[str, Any]:
+        """Apply saved settings to the running app without a manual restart."""
+        RUNTIME.request_reload()
+        return {"reloading": True}
