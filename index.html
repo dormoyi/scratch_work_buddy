@@ -16,7 +16,7 @@
 			<p class="tagline">A Reachy Mini that notices when you touch your face — and says something.</p>
 			<div class="pill-row">
 				<span class="pill">Runs on-robot or on your laptop</span>
-				<span class="pill">Cloud or fully local</span>
+				<span class="pill">Fully offline by default</span>
 				<span class="pill">Nothing stored</span>
 			</div>
 		</div>
@@ -44,7 +44,7 @@
 				<div class="habit">
 					<span class="habit-icon">📱</span>
 					<strong>Phone drift</strong>
-					<span>Phone in hand, eyes on it instead of the screen.</span>
+					<span>Phone in hand, eyes on it instead of the screen. Cloud backend only.</span>
 				</div>
 			</div>
 		</section>
@@ -56,8 +56,9 @@
 cp .env.example .env      <span class="comment"># add your OPENAI_API_KEY</span>
 focus-buddy --desktop</code></pre>
 			<p class="fine">
-				On a Mac with Apple Silicon you can run everything locally instead, so no image ever
-				leaves the machine: <code>pip install -e '.[edge]'</code>
+				To run with no API key and no image ever leaving the machine, build the landmark
+				sidecar once with <code>focus-buddy-setup-sidecar</code>, then start it with
+				<code>focus-buddy --desktop --backend edge</code>.
 			</p>
 		</section>
 
@@ -66,7 +67,7 @@ focus-buddy --desktop</code></pre>
 			<div class="flow">
 				<span class="step">Camera frame</span>
 				<span class="arrow">→</span>
-				<span class="step">Vision model</span>
+				<span class="step">Geometry <em>or</em> model</span>
 				<span class="arrow">→</span>
 				<span class="step">Observation</span>
 				<span class="arrow">→</span>
@@ -80,6 +81,34 @@ focus-buddy --desktop</code></pre>
 				phrasings by default; if you let a language model rewrite them, whatever it produces has
 				to pass validation first — right length, actually about the habit it saw, and not
 				contradicting the frame.
+			</p>
+		</section>
+
+		<section class="card">
+			<h2>Why geometry, not a vision model</h2>
+			<p>
+				"Is a hand touching your face" is a distance question, and small local vision models
+				answer it badly. Measured on labelled frames from a Reachy Mini camera — half with a hand
+				at the face, half without — every 2–3B checkpoint scored at chance by answering
+				<em>yes</em> to all of them:
+			</p>
+			<table class="bench">
+				<thead>
+					<tr><th>Backend</th><th>Face-touch accuracy</th><th>Per frame</th></tr>
+				</thead>
+				<tbody>
+					<tr><td>SmolVLM2-2.2B-4bit</td><td>8/16 (chance)</td><td>13.3 s</td></tr>
+					<tr><td>Qwen2-VL-2B-4bit</td><td>8/16 (chance)</td><td>4.5 s</td></tr>
+					<tr><td>Qwen2.5-VL-3B-4bit</td><td>8/16 (chance)</td><td>3.1 s</td></tr>
+					<tr class="win"><td>landmark geometry</td><td>24/24</td><td>0.05 s</td></tr>
+				</tbody>
+			</table>
+			<p class="fine">
+				The same frames separate cleanly by distance: 0.000–0.015 face widths while touching,
+				0.528–2.102 while not. Thresholds are ratios of the face width, so they do not care how
+				close you sit or what resolution the camera runs at. Phone detection is the one thing
+				geometry cannot do — a phone is object recognition, not a distance — so it is answered by
+				the cloud backend or not at all.
 			</p>
 		</section>
 	</main>

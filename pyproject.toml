@@ -39,17 +39,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Apple Silicon ONLY. mlx has no wheels for ARM Linux, so this extra cannot be
-# installed on a Reachy Mini wireless (Raspberry Pi). See README > Edge mode.
-edge = [
+# Dependencies for FOCUS_BUDDY_BACKEND=edge-vlm only. Named after the backend it
+# serves: `edge` needs no extra at all, because it runs no model. Apple Silicon
+# ONLY -- mlx has no wheels for ARM Linux, so this cannot be installed on a
+# Reachy Mini wireless (Raspberry Pi).
+edge-vlm = [
     "mlx-vlm>=0.1.12",
     "mlx-lm>=0.19",
 ]
-# NOTE: there is deliberately no `landmarks` extra. MediaPipe cannot be
-# installed next to the rest of this package: its only working API needs
-# numpy<2, while reachy-mini needs numpy>=2.2.5 and opencv-python needs numpy>=2.
-# It runs in a separate interpreter instead, built by:
-#     python tools/setup_landmark_sidecar.py
+# NOTE: there is deliberately no extra for the default `edge` backend. MediaPipe
+# cannot be installed next to the rest of this package: its only working API
+# needs numpy<2, while reachy-mini needs numpy>=2.2.5 and opencv-python needs
+# numpy>=2. It runs in a separate interpreter instead, built by:
+#     focus-buddy-setup-sidecar
 
 [dependency-groups]
 dev = [

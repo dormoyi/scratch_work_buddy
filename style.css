@@ -173,3 +173,40 @@ pre code {
 	border-top: 1px solid var(--border);
 	font-size: 0.9rem;
 }
+
+.bench {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 16px 0 6px;
+	font-size: 0.95rem;
+}
+
+.bench th,
+.bench td {
+	text-align: left;
+	padding: 8px 10px;
+	border-bottom: 1px solid var(--border);
+}
+
+.bench th {
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--muted);
+	font-weight: 600;
+}
+
+.bench tr:last-child td {
+	border-bottom: 0;
+}
+
+.bench tr.win td {
+	font-weight: 600;
+	color: var(--accent);
+}
+
+.bench th:nth-child(n + 2),
+.bench td:nth-child(n + 2) {
+	text-align: right;
+	white-space: nowrap;
+}

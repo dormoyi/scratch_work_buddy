@@ -5,7 +5,7 @@ colorFrom: indigo
 colorTo: pink
 sdk: static
 pinned: false
-short_description: Notices the habits that break your focus, out loud.
+short_description: Notices when you touch your face. Runs fully offline.
 tags:
   - reachy_mini
   - reachy_mini_python_app
@@ -181,13 +181,15 @@ raised is a plausible future addition.
 **`cloud`** (default) sends each frame to an OpenAI vision model. Works on every platform,
 needs a network connection and an API key, and costs roughly a fraction of a cent per frame.
 
-**`edge`** runs everything locally on your Mac: a 4-bit SmolVLM2-2.2B for vision, and
-optionally a 4-bit Llama-3.2-1B to phrase nudges. Nothing leaves the machine and there is no
-per-frame cost. To use it:
+**`edge`** is landmark geometry and needs no model, no key and no extra — see the section
+above. **`edge-vlm`** is the older local-VLM path, kept for comparison: a 4-bit SmolVLM2-2.2B
+for vision and optionally a 4-bit Llama-3.2-1B to phrase nudges. It is the only backend that
+needs the optional dependency, and it is not recommended — on a labelled set it scored at
+chance for every habit.
 
 ```bash
-pip install -e '.[edge]'
-FOCUS_BUDDY_BACKEND=edge focus-buddy --desktop --speech macos
+pip install -e '.[edge-vlm]'
+FOCUS_BUDDY_BACKEND=edge-vlm focus-buddy --desktop --speech macos
 ```
 
 The first run downloads several gigabytes of weights. Set `HF_HOME` to control where they
@@ -207,6 +209,8 @@ model is being shown; if detection is behaving strangely, look there first.
 | `observations.py` | `Observation` and `Habit` — the typed result every backend returns |
 | `perception/` | frame → `Observation`. `framing` crops, `captions` classifies prose |
 | `perception/landmarks.py` | hand-to-face geometry, and the MediaPipe sidecar client |
+| `settings_page.py` | the dashboard settings page: what it saves, and live run state |
+| `setup_sidecar.py` | builds the MediaPipe environment (`focus-buddy-setup-sidecar`) |
 | `brain/` | optional LLM rephrasing of a nudge |
 | `nudges.py` | nudge templates and the validation a model's output must pass |
 | `memory.py` | per-day episode counters and the spoken summary |
@@ -235,7 +239,7 @@ paraphrased by a model that could get them wrong.
 
 ```bash
 pip install -e . --group dev
-pytest                    # 153 tests, no network, no camera, no models
+pytest                    # 190 tests, no network, no camera, no models
 ruff check . && ruff format --check .
 mypy src/
 ```
