@@ -6,6 +6,7 @@ colorTo: pink
 sdk: static
 pinned: false
 short_description: Notices when you touch your face. Runs fully offline.
+thumbnail: https://huggingface.co/spaces/idormoy/focus_buddy/resolve/main/media/hero.jpg
 tags:
   - reachy_mini
   - reachy_mini_python_app
@@ -13,9 +14,18 @@ tags:
 
 # Focus Buddy
 
+![Focus Buddy: a Reachy Mini watching someone reach for their phone](media/hero.jpg)
+
 A [Reachy Mini](https://huggingface.co/pollen-robotics) app that sits on your desk, watches
 for the small habits that break your focus — touching your face, biting your nails, drifting
 onto your phone — and says something about it. Once an hour it tells you how the day is going.
+
+**It runs offline and free.** The default backend uses no model at all: face-touching and
+nail-biting are a distance question, so it measures the distance — 24/24 accurate at ~50 ms a
+frame, with no API key and no frame ever leaving the machine. Most apps of this kind bill you
+per frame to a hosted vision model; this one does not have to.
+
+▶ **[Watch the demo](media/demo.mp4)** (28 s) — the phone comes out, the Mini notices.
 
 It is deliberately not a productivity dashboard. There is no score, nothing is uploaded, and
 the only record is a per-day tally that resets at midnight.

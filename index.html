@@ -4,61 +4,153 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Focus Buddy</title>
+	<title>Focus Buddy — a Reachy Mini that notices your habits</title>
+	<meta name="description"
+		content="A Reachy Mini desk companion that catches face-touching and nail-biting with landmark geometry — 24/24 accurate, 50ms a frame, no model, no API key, no cost." />
 	<link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
 	<header class="hero">
-		<div class="hero-content">
-			<div class="app-icon">👀</div>
-			<h1>Focus Buddy</h1>
-			<p class="tagline">A Reachy Mini that notices when you touch your face — and says something.</p>
-			<div class="pill-row">
-				<span class="pill">Runs on-robot or on your laptop</span>
-				<span class="pill">Fully offline by default</span>
-				<span class="pill">Nothing stored</span>
-			</div>
+		<img class="hero-art" src="media/hero.jpg"
+			alt="Illustration of a desk: a Reachy Mini beside a laptop, watching someone reach for their phone." />
+		<div class="app-icon">👀</div>
+		<h1>Focus Buddy</h1>
+		<p class="tagline">
+			A Reachy Mini that notices when you touch your face, bite your nails or drift onto your
+			phone — and says something about it.
+		</p>
+		<div class="pill-row">
+			<span class="pill strong">Runs offline · no API key</span>
+			<span class="pill">Free to run</span>
+			<span class="pill">Built on an 8 GB Mac</span>
+			<span class="pill">50 ms a frame</span>
 		</div>
 	</header>
 
 	<main class="container">
+
 		<section class="card">
-			<h2>What it does</h2>
-			<p>
-				It watches for the small habits that break your focus and mentions them out loud, at most
-				once a minute. Once an hour it tells you how the day is going. There is no score and no
-				dashboard — the tally resets at midnight and nothing is uploaded.
+			<h2>See it work</h2>
+			<video class="demo" controls playsinline preload="none" poster="media/demo-poster.jpg">
+				<source src="media/demo.mp4" type="video/mp4" />
+				Your browser cannot play this video.
+				<a href="media/demo.mp4">Download it instead.</a>
+			</video>
+			<p class="fine">
+				The phone comes out, the Mini notices, and says so. Nothing in that loop leaves the
+				machine unless you ask it to.
 			</p>
-			<div class="habit-grid">
-				<div class="habit">
-					<span class="habit-icon">🤦</span>
-					<strong>Face touching</strong>
-					<span>A hand resting on your cheek, chin or forehead.</span>
+		</section>
+
+		<section class="card highlight">
+			<h2>The unusual part: it costs nothing to run</h2>
+			<p>
+				Most Reachy Mini apps that watch you send every frame to a hosted vision model. That
+				works, and it bills you per frame forever. Focus Buddy's default backend runs
+				<strong>no model at all</strong> — face-touching and nail-biting are a distance
+				question, so it measures the distance.
+			</p>
+			<div class="cost-grid">
+				<div class="cost">
+					<span class="cost-label">edge (default)</span>
+					<span class="cost-value ok">$0.00</span>
+					<span class="cost-note">landmark geometry, on your machine. No key, no network,
+						no frame ever uploaded.</span>
 				</div>
-				<div class="habit">
-					<span class="habit-icon">💅</span>
-					<strong>Nail biting</strong>
-					<span>Fingertips at or in your mouth.</span>
-				</div>
-				<div class="habit">
-					<span class="habit-icon">📱</span>
-					<strong>Phone drift</strong>
-					<span>Phone in hand, eyes on it instead of the screen. Cloud backend only.</span>
+				<div class="cost">
+					<span class="cost-label">cloud</span>
+					<span class="cost-value">~¢ per frame</span>
+					<span class="cost-note">a hosted vision model. Adds phone detection, which
+						geometry cannot do — and posture.</span>
 				</div>
 			</div>
 		</section>
 
 		<section class="card">
-			<h2>Try it</h2>
-			<p>No robot required — it runs against your laptop webcam.</p>
-			<pre><code>pip install -e .
-cp .env.example .env      <span class="comment"># add your OPENAI_API_KEY</span>
-focus-buddy --desktop</code></pre>
+			<h2>What it watches for</h2>
+			<div class="habit-grid">
+				<div class="habit">
+					<span class="habit-icon">🤦</span>
+					<strong>Face touching</strong>
+					<span>A hand resting on your cheek, chin or forehead.</span>
+					<span class="tag ok">offline</span>
+				</div>
+				<div class="habit">
+					<span class="habit-icon">💅</span>
+					<strong>Nail biting</strong>
+					<span>Fingertips at or in your mouth.</span>
+					<span class="tag ok">offline</span>
+				</div>
+				<div class="habit">
+					<span class="habit-icon">📱</span>
+					<strong>Phone drift</strong>
+					<span>Phone in hand, eyes on it instead of the screen.</span>
+					<span class="tag">cloud only</span>
+				</div>
+			</div>
 			<p class="fine">
-				To run with no API key and no image ever leaving the machine, build the landmark
-				sidecar once with <code>focus-buddy-setup-sidecar</code>, then start it with
-				<code>focus-buddy --desktop --backend edge</code>.
+				It also tracks gaze and whether you are at the desk at all, both from geometry. Nudges
+				are rate-limited — once a minute by default — and counted as <em>episodes</em>, not
+				frames: a thirty-second phone check is one distraction, not thirty. Once an hour it
+				tells you how the day is going. No score, no dashboard, no upload; the tally resets at
+				midnight.
+			</p>
+		</section>
+
+		<section class="card">
+			<h2>Why geometry beat every vision model I tried</h2>
+			<p>
+				This is the finding the project is really about. "Is a hand touching your face" reads
+				like a job for a vision-language model. It isn't — it's a distance, and the small
+				local VLMs answer it at chance.
+			</p>
+			<p>
+				Measured on 16 labelled frames from the robot's own camera: eight with a hand at the
+				face, eight without. Every 2–3B checkpoint answered <em>yes</em> to all sixteen.
+			</p>
+			<table class="bench">
+				<thead>
+					<tr>
+						<th>Backend</th>
+						<th>Face-touch accuracy</th>
+						<th>Per frame</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>SmolVLM2-2.2B-4bit</td>
+						<td>8/16 <span class="dim">chance</span></td>
+						<td>13.3 s</td>
+					</tr>
+					<tr>
+						<td>Qwen2-VL-2B-4bit</td>
+						<td>8/16 <span class="dim">chance</span></td>
+						<td>4.5 s</td>
+					</tr>
+					<tr>
+						<td>Qwen2.5-VL-3B-4bit</td>
+						<td>8/16 <span class="dim">chance</span></td>
+						<td>3.1 s</td>
+					</tr>
+					<tr class="win">
+						<td>landmark geometry</td>
+						<td>24/24</td>
+						<td>0.05 s</td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="fine">
+				The same frames separate cleanly by distance: <strong>0.000–0.015</strong> face widths
+				from the face box while touching, <strong>0.528–2.102</strong> while not. A 35× gap,
+				where the models had none. Thresholds are ratios of the face width, so they do not care
+				how close you sit or what resolution the camera runs at. Gaze scored 23/24 from iris
+				position; at-the-desk 41/43.
+			</p>
+			<p class="fine">
+				The models were not merely wrong, they were <em>not looking</em>. SmolVLM2 returned a
+				character-identical sentence — "there is a hand touching the face, specifically near the
+				mouth" — for three different frames and for a picture of coloured rectangles.
 			</p>
 		</section>
 
@@ -76,39 +168,155 @@ focus-buddy --desktop</code></pre>
 				<span class="step">Speech</span>
 			</div>
 			<p>
-				Every vision backend returns the same typed <code>Observation</code>, so swapping a cloud
-				model for a local one changes nothing downstream. Spoken nudges come from a fixed set of
-				phrasings by default; if you let a language model rewrite them, whatever it produces has
-				to pass validation first — right length, actually about the habit it saw, and not
-				contradicting the frame.
+				Every vision backend returns the same typed <code>Observation</code>, so swapping
+				geometry for a cloud model changes nothing downstream. The four backend families —
+				perception, brain, speech, hardware — each sit behind a <code>Protocol</code> built by a
+				small factory from <code>Settings</code>, which is what lets the whole loop be tested
+				against fakes with no camera, no network and no models.
+			</p>
+			<h3>Two rules the design does not bend on</h3>
+			<p class="fine">
+				<strong>The model never gets the last word.</strong> Nudges come from fixed phrasings by
+				default. A language model may rewrite them, but whatever it produces must pass
+				validation first — right length, actually mentions the habit it saw, and does not
+				contradict the frame. Small models love to append "…and you're not even looking at your
+				screen", which is often flatly untrue. Anything that fails is replaced by the template.
+			</p>
+			<p class="fine">
+				<strong>The summary is computed, not generated.</strong> "You've been working 2h,
+				nail-biting 3 times" is formatted from counters. Those numbers are facts about your day
+				and should not be paraphrased by anything that can hallucinate.
 			</p>
 		</section>
 
 		<section class="card">
-			<h2>Why geometry, not a vision model</h2>
+			<h2>Getting a VLM onto an 8 GB Mac</h2>
 			<p>
-				"Is a hand touching your face" is a distance question, and small local vision models
-				answer it badly. Measured on labelled frames from a Reachy Mini camera — half with a hand
-				at the face, half without — every 2–3B checkpoint scored at chance by answering
-				<em>yes</em> to all of them:
+				Before geometry won, a lot of work went into making local vision models fit. That work
+				is why the comparison above is fair — the models were given every advantage the hardware
+				allows.
+			</p>
+			<p>
+				The machine is an <strong>M3 with 8 GB of unified memory</strong>, shared between CPU and
+				GPU. SmolVLM2-2.2B at float32 wants about 8.8 GB, which does not fit; bfloat16 halves it
+				to ~4.4 GB, which technically fits and then thrashes.
 			</p>
 			<table class="bench">
 				<thead>
-					<tr><th>Backend</th><th>Face-touch accuracy</th><th>Per frame</th></tr>
+					<tr>
+						<th>Precision</th>
+						<th>Bytes / param</th>
+						<th>SmolVLM2-2.2B</th>
+					</tr>
 				</thead>
 				<tbody>
-					<tr><td>SmolVLM2-2.2B-4bit</td><td>8/16 (chance)</td><td>13.3 s</td></tr>
-					<tr><td>Qwen2-VL-2B-4bit</td><td>8/16 (chance)</td><td>4.5 s</td></tr>
-					<tr><td>Qwen2.5-VL-3B-4bit</td><td>8/16 (chance)</td><td>3.1 s</td></tr>
-					<tr class="win"><td>landmark geometry</td><td>24/24</td><td>0.05 s</td></tr>
+					<tr>
+						<td>float32</td>
+						<td>4</td>
+						<td>~8.8 GB</td>
+					</tr>
+					<tr>
+						<td>bfloat16</td>
+						<td>2</td>
+						<td>~4.4 GB</td>
+					</tr>
+					<tr class="win">
+						<td>4-bit quantized</td>
+						<td>0.5</td>
+						<td>~1.1–1.5 GB</td>
+					</tr>
 				</tbody>
 			</table>
+			<h3>Why the usual 4-bit path does not work on a Mac</h3>
 			<p class="fine">
-				The same frames separate cleanly by distance: 0.000–0.015 face widths while touching,
-				0.528–2.102 while not. Thresholds are ratios of the face width, so they do not care how
-				close you sit or what resolution the camera runs at. Phone detection is the one thing
-				geometry cannot do — a phone is object recognition, not a distance — so it is answered by
-				the cloud backend or not at all.
+				4-bit weights are packed on disk and unpacked to 16-bit floats on the fly, which needs a
+				specialised kernel. In the Hugging Face ecosystem that kernel is
+				<code>bitsandbytes</code>, written in CUDA — Nvidia's proprietary language. Apple GPUs
+				use Metal, so the code cannot compile or run; it falls back to CPU or crashes. Apple's
+				answer is <strong>MLX</strong>, written against Metal from the ground up, and
+				<code>mlx-vlm</code> ships its own 4-bit kernels for Apple Silicon. That is the route
+				this project took.
+			</p>
+			<h3>Bigger and quantized beats smaller and pristine</h3>
+			<p class="fine">
+				4-bit quantization keeps roughly 95–98% of a model's accuracy while removing 75% of its
+				memory; 3-bit starts to degrade and 2-bit tends toward gibberish. Dropping to a 500M
+				model instead lowers the ceiling structurally — it loses the capacity for spatial
+				reasoning and stops respecting output formats. For "are the fingers at the lips or just
+				near the jaw", a 4-bit 2.2B beats a pristine 500M. Confirmed here: the 500M checkpoint
+				hallucinated hands onto the monitor.
+			</p>
+			<h3>What thrashing looks like</h3>
+			<p class="fine">
+				During inference the model touches essentially all of its weights for every token. If
+				the working set exceeds RAM, the machine spends its time moving pages between disk and
+				memory instead of computing — and disk is ~100× slower than RAM, so a task that should
+				take seconds takes hours. The fingerprint is unmistakable: low CPU, tiny resident set,
+				and swap climbing into the gigabytes. At its worst this build showed ~10 GB of swap in
+				use on an 8 GB machine. The higher-precision SmolVLM2 convert took
+				<strong>339 seconds per frame</strong> before being abandoned.
+			</p>
+			<p class="fine">
+				Diagnostics that earned their keep: <code>vm_stat 1</code> for live paging,
+				<code>sysctl vm.swapusage</code> for the trend, <code>memory_pressure</code> for the
+				kernel's own verdict, and <code>/usr/bin/time -l</code> for peak footprint and whether
+				anything swapped at all.
+			</p>
+		</section>
+
+		<section class="card">
+			<h2>Making a small model behave</h2>
+			<p class="fine">
+				Getting usable output from a 2B model is its own discipline. A cloud-style prompt asking
+				for <code>"looking_at_screen": True | …</code> made SmolVLM echo the template back,
+				placeholders included. A filled-in example made it emit the trailing fragment of the
+				example. A numbered Yes/No checklist produced a stuck prior — the same answers
+				regardless of the image.
+			</p>
+			<p class="fine">
+				What worked was to <strong>stop asking the model for structure at all</strong>: ask for
+				one or two plain sentences about hands, mouth and gaze, then let Python turn that prose
+				into the typed <code>Observation</code>. The format is the deterministic part, so it
+				should not be spent on the model's limited capability. Every regex in that classifier
+				exists because a real model said something the previous version got wrong — including
+				the one that stopped "no indication of nail-biting" from registering as nail-biting.
+			</p>
+			<p class="fine">
+				The same lesson, taken further, is what produced the geometry backend: move work out of
+				the prompt and into code wherever the work is mechanical. Distance is mechanical.
+			</p>
+		</section>
+
+		<section class="card">
+			<h2>On the robot</h2>
+			<p class="fine">
+				The Mini's camera is wide-angle and its view is not a webcam's, so frames are cropped
+				around the face before anything looks at them — biased downward toward hands and desk,
+				and toward whichever way the head is turned. Face detection uses OpenCV Haar cascades
+				rather than MediaPipe Tasks, which aborts in <code>DrishtiMetalHelper</code> on Apple
+				Silicon. The head sways in time with speech by hooking the SDK's audio pipeline, which
+				is cheaper and better-looking than a motion loop.
+			</p>
+			<p class="fine">
+				MediaPipe itself runs in a <strong>separate interpreter</strong>. Its only working API on
+				Apple Silicon needs <code>numpy&lt;2</code>, while <code>reachy-mini</code> needs
+				<code>numpy&gt;=2.2.5</code> — there is no overlap, so it gets its own virtualenv and
+				speaks over a pipe. The sidecar returns raw landmarks and the parent applies every
+				threshold, so the geometry has exactly one tested copy.
+			</p>
+		</section>
+
+		<section class="card">
+			<h2>Try it</h2>
+			<p>Install it from the Reachy Mini dashboard, or run it against a laptop webcam:</p>
+			<pre><code>pip install -e .
+focus-buddy-setup-sidecar          <span class="comment"># builds the MediaPipe environment, once</span>
+focus-buddy --desktop --backend edge</code></pre>
+			<p class="fine">
+				That needs no API key and no network. For phone detection and posture, set an
+				<code>OPENAI_API_KEY</code> and use <code>--backend cloud</code> — from the dashboard,
+				the app has a settings page for it. <code>edge-vlm</code> runs the old local VLM path
+				and is kept for comparison, not recommended; see the table above for why.
 			</p>
 		</section>
 	</main>
