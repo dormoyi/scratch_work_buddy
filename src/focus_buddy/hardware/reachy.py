@@ -6,7 +6,6 @@ import logging
 import time
 from pathlib import Path
 
-import cv2
 import numpy as np
 from PIL import Image
 
@@ -53,16 +52,22 @@ class ReachyBody:
         if frame is None:
             return self._last_frame
 
-        height, width = frame.shape[:2]
+        # The SDK yields BGR arrays; every model downstream expects RGB. Reversing
+        # the last axis is the same conversion cv2.cvtColor did, and ascontiguous
+        # undoes the negative stride that Image.fromarray will not accept.
+        # Done with numpy and Pillow rather than OpenCV so that importing this
+        # module does not map 120MB of cv2 on a machine that cannot spare it.
+        image = Image.fromarray(np.ascontiguousarray(np.asarray(frame)[:, :, ::-1]))
+
+        width, height = image.size
         longest = max(width, height)
         if longest > _MAX_FRAME_EDGE:
             scale = _MAX_FRAME_EDGE / longest
-            frame = cv2.resize(
-                frame, (int(width * scale), int(height * scale)), interpolation=cv2.INTER_AREA
-            )
+            # BOX is Pillow's equivalent of INTER_AREA: an area average, which is
+            # what you want when shrinking.
+            image = image.resize((int(width * scale), int(height * scale)), Image.Resampling.BOX)
 
-        # The SDK yields BGR arrays; every model downstream expects RGB.
-        self._last_frame = Image.fromarray(cv2.cvtColor(np.asarray(frame), cv2.COLOR_BGR2RGB))
+        self._last_frame = image
         return self._last_frame
 
     def play_audio(self, wav_path: Path, duration_s: float) -> None:
