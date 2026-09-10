@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import threading
+import time
 
 import pytest
 from reachy_mini import ReachyMiniApp
@@ -116,3 +118,92 @@ class TestSetupLogging:
         # Child loggers are where the volume actually comes from.
         for child in ("websockets.client", "httpcore.http11", "httpcore.connection"):
             assert logging.getLogger(child).getEffectiveLevel() == logging.WARNING
+
+
+class TestSettingsPageIsAlwaysReachable:
+    """The page must exist once configured, not only while broken.
+
+    Attaching the endpoints only when settings were missing meant the page
+    worked exactly until someone used it: after that main() injected valid
+    settings, the routes were never added, and the page 404ed forever.
+    """
+
+    def _routes(self, app):
+        return {getattr(r, "path", None) for r in app.settings_app.routes}
+
+    def test_endpoints_exist_when_unconfigured(self, monkeypatch):
+        monkeypatch.setattr(
+            ReachyMiniApp, "_check_daemon_on_localhost", staticmethod(lambda *a, **k: False)
+        )
+        assert "/api/settings" in self._routes(main_module.FocusBuddy())
+
+    def test_endpoints_exist_when_settings_were_injected(self, monkeypatch):
+        monkeypatch.setattr(
+            ReachyMiniApp, "_check_daemon_on_localhost", staticmethod(lambda *a, **k: False)
+        )
+        app = main_module.FocusBuddy(settings=Settings())
+        assert "/api/settings" in self._routes(app)
+
+
+class TestEitherEvent:
+    """The loop takes one stop event but must stop for two different reasons."""
+
+    def test_unset_when_neither_is_set(self):
+        a, b = threading.Event(), threading.Event()
+        assert main_module._EitherEvent(a, b).is_set() is False
+
+    def test_set_when_either_is_set(self):
+        a, b = threading.Event(), threading.Event()
+        either = main_module._EitherEvent(a, b)
+        b.set()
+        assert either.is_set() is True
+        b.clear()
+        a.set()
+        assert either.is_set() is True
+
+    def test_wait_returns_immediately_once_set(self):
+        a, b = threading.Event(), threading.Event()
+        b.set()
+        started = time.monotonic()
+        assert main_module._EitherEvent(a, b).wait(5) is True
+        assert time.monotonic() - started < 1
+
+    def test_wait_times_out_when_neither_fires(self):
+        a, b = threading.Event(), threading.Event()
+        assert main_module._EitherEvent(a, b).wait(0.3) is False
+
+    def test_wait_wakes_on_the_second_event(self):
+        """Blocking on the stop event alone would sleep through a reload."""
+        a, b = threading.Event(), threading.Event()
+        threading.Timer(0.2, b.set).start()
+        started = time.monotonic()
+        assert main_module._EitherEvent(a, b).wait(5) is True
+        assert time.monotonic() - started < 2
+
+
+class TestSettingsArePinnedOnlyByFlags:
+    """Pinning on every launch made Save kill the app.
+
+    FocusBuddy.run treats injected settings as "the CLI chose these, do not let
+    the page override them" and returns instead of rebuilding. Injecting them
+    whenever the configuration merely happened to be valid meant every
+    dashboard launch looked pinned, so a reload exited the process.
+    """
+
+    def test_no_flags_leaves_the_app_free_to_reload(self, captured_app):
+        assert main_module.main([]) == 0
+        assert captured_app[0].settings is None
+
+    def test_flags_are_still_pinned(self, captured_app):
+        assert main_module.main(["--debug"]) == 0
+        assert captured_app[0].settings is not None
+        assert captured_app[0].settings.nudge_cooldown_s == 15.0
+
+    def test_has_overrides_detects_each_flag(self):
+        for argv in (["--debug"], ["--backend", "cloud"], ["--speech", "none"], ["--llm-nudges"]):
+            assert main_module.has_overrides(main_module.parse_args(argv)) is True
+
+    def test_has_overrides_ignores_non_settings_flags(self):
+        """-v and --desktop change how it runs, not what it is configured as."""
+        assert main_module.has_overrides(main_module.parse_args(["-v"])) is False
+        assert main_module.has_overrides(main_module.parse_args([])) is False

@@ -16,6 +16,7 @@ import argparse
 import logging
 import sys
 import threading
+import time
 
 from reachy_mini import ReachyMini, ReachyMiniApp
 
@@ -38,7 +39,7 @@ def setup_logging(verbose: bool = False) -> None:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
-def build_loop(body: object, settings: Settings) -> object:
+def build_loop(body: object, settings: Settings, owns_body: bool = True) -> object:
     """Assemble a :class:`~focus_buddy.loop.FocusLoop` around an existing body."""
     from .brain import build_nudge_writer
     from .loop import FocusLoop
@@ -52,6 +53,7 @@ def build_loop(body: object, settings: Settings) -> object:
         settings=settings,
         # Only pay to load a language model when nudges will actually use one.
         nudge_writer=build_nudge_writer(settings) if settings.use_llm_nudges else None,
+        owns_body=owns_body,
     )
 
 
@@ -65,6 +67,37 @@ def _report(settings: Settings) -> list[str]:
 
 # How often to re-read the configuration while waiting for the settings page.
 _CONFIG_POLL_S = 2.0
+
+
+class _EitherEvent:
+    """Reads as set when either of two events is set.
+
+    The focus loop takes a single stop event, and it should stop both when the
+    dashboard says so and when saved settings need applying. Rather than teach
+    the loop about reloading, give it something that is true for either reason.
+    """
+
+    def __init__(self, *events: threading.Event) -> None:
+        """Wrap the events to watch."""
+        self._events = events
+
+    def is_set(self) -> bool:
+        """Whether any wrapped event is set."""
+        return any(event.is_set() for event in self._events)
+
+    def wait(self, timeout: float | None = None) -> bool:
+        """Wait up to ``timeout``, returning as soon as any event is set.
+
+        Polls rather than blocking on one event, because blocking on the stop
+        event would ignore a reload request for a whole poll interval.
+        """
+        deadline = None if timeout is None else time.monotonic() + timeout
+        while not self.is_set():
+            if deadline is not None and time.monotonic() >= deadline:
+                return False
+            remaining = 0.2 if deadline is None else min(0.2, deadline - time.monotonic())
+            self._events[0].wait(max(0.0, remaining))
+        return True
 
 
 class FocusBuddy(ReachyMiniApp):
@@ -85,11 +118,14 @@ class FocusBuddy(ReachyMiniApp):
         """
         super().__init__(running_on_wireless)
         self._settings = settings
-        # Only the dashboard needs the page; the CLI has flags and a shell.
-        if settings is None:
-            from .settings_page import attach
+        # Always, not just when the configuration is broken. Attaching only in
+        # the unconfigured case meant the settings page worked exactly until it
+        # had been used once: afterwards main() injected valid settings, the
+        # endpoints were never added, and the page sat on "Loading..." forever
+        # because its first fetch 404ed.
+        from .settings_page import attach
 
-            attach(self.settings_app)
+        attach(self.settings_app)
 
     def _await_configuration(self, stop_event: threading.Event) -> Settings | None:
         """Block until the settings page yields a usable configuration.
@@ -105,6 +141,9 @@ class FocusBuddy(ReachyMiniApp):
             if not errors:
                 return settings
             if not announced:
+                from .settings_page import RUNTIME
+
+                RUNTIME.waiting("; ".join(errors))
                 # Also surfaced by the dashboard through ReachyMiniApp.error.
                 self.error = "Focus Buddy needs configuring:\n- " + "\n- ".join(errors)
                 logger.error(
@@ -126,9 +165,43 @@ class FocusBuddy(ReachyMiniApp):
                 return
             self.error = ""
 
-        body = ReachyBody(reachy_mini)
-        loop = build_loop(body, settings)
-        loop.run(stop_event)  # type: ignore[attr-defined]
+        from .settings_page import RUNTIME
+
+        # Rebuilt whenever the settings page asks for it, so changing the
+        # backend or the voice does not mean stopping and starting the app by
+        # hand. The dashboard's stop event ends the outer loop for good.
+        body = None
+        body_wobble: bool | None = None
+        try:
+            while not stop_event.is_set():
+                RUNTIME.reload_requested.clear()
+                # The robot connection outlives a settings change. Only wobble
+                # is fixed at construction, so only wobble forces a reconnect.
+                if body is None or body_wobble != settings.wobble:
+                    if body is not None:
+                        body.close()
+                    RUNTIME.waiting("connecting to the robot")
+                    body = ReachyBody(reachy_mini, wobble=settings.wobble)
+                    body_wobble = settings.wobble
+
+                loop = build_loop(body, settings, owns_body=False)
+                RUNTIME.watching(loop)
+                try:
+                    loop.run(_EitherEvent(stop_event, RUNTIME.reload_requested))  # type: ignore[attr-defined]
+                finally:
+                    RUNTIME.stopped()
+
+                if stop_event.is_set() or self._settings is not None:
+                    # Stopped for real, or running with settings the CLI pinned,
+                    # which the page has no business overriding.
+                    return
+                logger.info("Applying new settings")
+                settings = self._await_configuration(stop_event)
+                if settings is None:
+                    return
+        finally:
+            if body is not None:
+                body.close()
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -164,6 +237,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="log at DEBUG level")
     return parser.parse_args(argv)
+
+
+def has_overrides(args: argparse.Namespace) -> bool:
+    """Whether the user actually asked for something on the command line.
+
+    Only then are settings pinned. Handing resolved settings over regardless
+    made the app treat every dashboard launch as CLI-pinned, so a reload
+    request ended the process instead of rebuilding -- the app exited whenever
+    someone pressed Save.
+    """
+    return bool(args.backend or args.speech or args.llm_nudges or args.debug)
 
 
 def settings_from_args(args: argparse.Namespace) -> Settings:
@@ -206,8 +290,10 @@ def main(argv: list[str] | None = None) -> int:
             for error in errors:
                 logger.error(error)
             logger.error("Waiting for the settings page at %s", FocusBuddy.custom_app_url)
-        # Settings are handed over rather than re-read, so CLI flags survive.
-        app = FocusBuddy(settings=None if errors else settings)
+        # Hand settings over only when flags were given, so they survive; with
+        # none, leave the app free to re-read them as the settings page saves.
+        pinned = settings if has_overrides(args) and not errors else None
+        app = FocusBuddy(settings=pinned)
         try:
             app.wrapped_run()
         except KeyboardInterrupt:
