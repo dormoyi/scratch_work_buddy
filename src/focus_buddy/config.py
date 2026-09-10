@@ -73,6 +73,11 @@ class Settings:
     # How often to speak the running daily summary.
     summary_every_s: float = 3600.0
 
+    # Sway the head in time with speech. The SDK implements this by hooking the
+    # audio pipeline, so it is worth being able to turn off when diagnosing
+    # audio or media trouble.
+    wobble: bool = True
+
     # Let a language model phrase the nudge. Off by default: template nudges are
     # instant, free, and never say anything strange to the user.
     use_llm_nudges: bool = False
@@ -122,6 +127,7 @@ class Settings:
             nudge_cooldown_s=_env_float("FOCUS_BUDDY_NUDGE_COOLDOWN_S", 60.0),
             summary_every_s=_env_float("FOCUS_BUDDY_SUMMARY_EVERY_S", 3600.0),
             use_llm_nudges=_env_bool("FOCUS_BUDDY_USE_LLM_NUDGES", False),
+            wobble=_env_bool("FOCUS_BUDDY_WOBBLE", True),
             cloud_vision_model=os.getenv("FOCUS_BUDDY_CLOUD_VISION_MODEL", "gpt-4o-mini"),
             cloud_llm_model=os.getenv("FOCUS_BUDDY_CLOUD_LLM_MODEL", "gpt-4o-mini"),
             cloud_tts_model=os.getenv("FOCUS_BUDDY_TTS_MODEL", "gpt-4o-mini-tts"),

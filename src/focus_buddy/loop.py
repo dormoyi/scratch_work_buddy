@@ -19,6 +19,10 @@ from .speech import SpeechBackend
 
 logger = logging.getLogger(__name__)
 
+# Consecutive empty frames before the loop says so, and how often after that.
+STARVED_FRAME_WARN_AFTER = 5
+STARVED_FRAME_WARN_EVERY = 30
+
 
 class FocusLoop:
     """Watches the camera and nudges the user about focus-breaking habits.
@@ -35,17 +39,33 @@ class FocusLoop:
         settings: Settings,
         nudge_writer: NudgeWriter | None = None,
         memory: DayMemory | None = None,
+        owns_body: bool = True,
     ) -> None:
-        """Wire the loop to its collaborators."""
+        """Wire the loop to its collaborators.
+
+        ``owns_body=False`` leaves the body open when the loop closes. The robot
+        connection survives a settings change; rebuilding it cost a twenty
+        second reconnect and a head-wobble toggle for nothing.
+        """
         self._body = body
         self._vision = vision
         self._speech = speech
         self._settings = settings
         self._nudge_writer = nudge_writer
+        self._owns_body = owns_body
         self.memory = memory or DayMemory()
 
         self._last_spoke_at = 0.0
         self._last_summary_at = time.time()
+        # Frames that arrived as None in a row. A wedged media pipeline used to
+        # look exactly like a healthy quiet one: tick() returned silently, so an
+        # app that processed nothing for minutes logged nothing at all.
+        self._starved_frames = 0
+        # When a frame was last classified, and how many have been. The settings
+        # page reports these so "running" means "actually seeing things" rather
+        # than merely "process alive".
+        self.last_tick_at: float | None = None
+        self.frames_seen = 0
         # Recent nudges, so a rephrasing model can be told not to repeat itself.
         self._spoken: list[str] = []
 
@@ -75,10 +95,29 @@ class FocusLoop:
 
         frame = self._body.grab_frame()
         if frame is None:
+            self._starved_frames += 1
+            # Once, then every STARVED_FRAME_WARN_EVERY after: enough to see the
+            # problem in a log without flooding it.
+            if (
+                self._starved_frames == STARVED_FRAME_WARN_AFTER
+                or self._starved_frames % STARVED_FRAME_WARN_EVERY == 0
+            ):
+                logger.warning(
+                    "No camera frame for %d ticks (~%.0fs). The media pipeline may be stuck; "
+                    "restarting the app usually clears it.",
+                    self._starved_frames,
+                    self._starved_frames * self._settings.poll_interval_s,
+                )
             return None
+
+        if self._starved_frames:
+            logger.info("Camera frames resumed after %d empty ticks", self._starved_frames)
+            self._starved_frames = 0
 
         started = time.perf_counter()
         observation = self._vision.classify(frame)
+        self.last_tick_at = time.time()
+        self.frames_seen += 1
         logger.info("[%.2fs] %s", time.perf_counter() - started, observation)
         self.memory.record(observation)
 
@@ -162,11 +201,13 @@ class FocusLoop:
 
     def close(self) -> None:
         """Release every collaborator, reporting failures without masking them."""
-        for name, resource in (
-            ("body", self._body),
+        resources: list[tuple[str, object]] = [
             ("vision", self._vision),
             ("nudge writer", self._nudge_writer),
-        ):
+        ]
+        if self._owns_body:
+            resources.insert(0, ("body", self._body))
+        for name, resource in resources:
             closer = getattr(resource, "close", None)
             if callable(closer):
                 try:

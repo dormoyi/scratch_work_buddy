@@ -119,3 +119,43 @@ class TestLifecycle:
         stop.set()
         loop.run(stop)
         assert body.closed and writer.closed
+
+
+class TestBodyOwnership:
+    """A settings reload rebuilds the backends but keeps the robot connection."""
+
+    def _loop(self, owns_body):
+        from focus_buddy.config import Settings, SpeechEngine
+        from focus_buddy.loop import FocusLoop
+
+        body, vision, speech = FakeBody(), FakeVision([Observation()]), FakeSpeech()
+        loop = (
+            FocusLoop(
+                body=body,
+                vision=vision,
+                speech=speech,
+                settings=Settings(speech=SpeechEngine.NONE),
+            )
+            if owns_body
+            else FocusLoop(
+                body=body,
+                vision=vision,
+                speech=speech,
+                settings=Settings(speech=SpeechEngine.NONE),
+                owns_body=False,
+            )
+        )
+        return loop, body, vision
+
+    def test_by_default_the_loop_closes_the_body(self):
+        loop, body, vision = self._loop(True)
+        loop.close()
+        assert body.closed is True and vision.closed is True
+
+    def test_a_borrowed_body_is_left_open(self):
+        """Reconnecting to the robot cost ~20s and a wobble toggle for nothing."""
+        loop, body, vision = self._loop(False)
+        loop.close()
+        assert body.closed is False
+        # The things that do depend on settings are still torn down.
+        assert vision.closed is True
