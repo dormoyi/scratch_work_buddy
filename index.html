@@ -12,23 +12,29 @@
 
 <body>
 	<header class="hero">
-		<video class="hero-demo" controls playsinline preload="metadata" poster="media/demo-poster.jpg">
-			<source src="media/demo.mp4" type="video/mp4" />
-			Your browser cannot play this video.
-			<a href="media/demo.mp4">Download it instead.</a>
-		</video>
-		<p class="hero-caption">The phone comes out, the Mini notices, and says so.</p>
-		<div class="app-icon">👀</div>
-		<h1>Focus Buddy</h1>
-		<p class="tagline">
-			A Reachy Mini that notices when you touch your face, bite your nails or drift onto your
-			phone - and says something about it.
-		</p>
-		<div class="pill-row">
-			<span class="pill strong">Runs offline · no API key</span>
-			<span class="pill">Free to run</span>
-			<span class="pill">Built on an 8 GB Mac</span>
-			<span class="pill">50 ms a frame</span>
+		<div class="hero-grid">
+			<div class="hero-text">
+				<div class="app-icon">👀</div>
+				<h1>Focus Buddy</h1>
+				<p class="tagline">
+					A Reachy Mini that notices when you touch your face, bite your nails or drift onto
+					your phone - and says something about it.
+				</p>
+				<div class="pill-row">
+					<span class="pill strong">Runs offline · no API key</span>
+					<span class="pill">Free to run</span>
+					<span class="pill">Built on an 8 GB Mac</span>
+					<span class="pill">50 ms a frame</span>
+				</div>
+			</div>
+			<div class="hero-media">
+				<video class="hero-demo" controls playsinline preload="metadata" poster="media/demo-poster.jpg">
+					<source src="media/demo.mp4" type="video/mp4" />
+					Your browser cannot play this video.
+					<a href="media/demo.mp4">Download it instead.</a>
+				</video>
+				<p class="hero-caption">The phone comes out, the Mini notices, and says so.</p>
+			</div>
 		</div>
 	</header>
 
@@ -160,6 +166,7 @@ focus-buddy --desktop --backend edge</code></pre>
 				Measured on 16 labelled frames from the robot's own camera: eight with a hand at the
 				face, eight without. Every 2-3B checkpoint answered <em>yes</em> to all sixteen.
 			</p>
+			<div class="table-scroll">
 			<table class="bench">
 				<thead>
 					<tr>
@@ -191,6 +198,7 @@ focus-buddy --desktop --backend edge</code></pre>
 					</tr>
 				</tbody>
 			</table>
+			</div>
 			<p class="fine">
 				The same frames separate cleanly by distance: <strong>0.000-0.015</strong> face widths
 				from the face box while touching, <strong>0.528-2.102</strong> while not. A 35× gap,
@@ -217,6 +225,7 @@ focus-buddy --desktop --backend edge</code></pre>
 				GPU. SmolVLM2-2.2B at float32 wants about 8.8 GB, which does not fit; bfloat16 halves it
 				to ~4.4 GB, which technically fits and then thrashes.
 			</p>
+			<div class="table-scroll">
 			<table class="bench">
 				<thead>
 					<tr>
@@ -243,6 +252,7 @@ focus-buddy --desktop --backend edge</code></pre>
 					</tr>
 				</tbody>
 			</table>
+			</div>
 			<h3>Why the usual 4-bit path does not work on a Mac</h3>
 			<p class="fine">
 				4-bit weights are packed on disk and unpacked to 16-bit floats on the fly, which needs a
