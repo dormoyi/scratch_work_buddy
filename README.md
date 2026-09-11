@@ -189,7 +189,8 @@ raised is a plausible future addition.
 > the app on the robot itself, you want `cloud`.
 
 **`cloud`** (default) sends each frame to an OpenAI vision model. Works on every platform,
-needs a network connection and an API key, and costs roughly a fraction of a cent per frame.
+needs a network connection and an API key. It is billed per frame, which is a fraction of a
+cent each but adds up to a few dollars for a full working day - every day it runs.
 
 **`edge`** is landmark geometry and needs no model, no key and no extra - see the section
 above. **`edge-vlm`** is the older local-VLM path, kept for comparison: a 4-bit SmolVLM2-2.2B

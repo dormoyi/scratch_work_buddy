@@ -12,8 +12,12 @@
 
 <body>
 	<header class="hero">
-		<img class="hero-art" src="media/hero.jpg"
-			alt="Illustration of a desk: a Reachy Mini beside a laptop, watching someone reach for their phone." />
+		<video class="hero-demo" controls playsinline preload="metadata" poster="media/demo-poster.jpg">
+			<source src="media/demo.mp4" type="video/mp4" />
+			Your browser cannot play this video.
+			<a href="media/demo.mp4">Download it instead.</a>
+		</video>
+		<p class="hero-caption">The phone comes out, the Mini notices, and says so.</p>
 		<div class="app-icon">👀</div>
 		<h1>Focus Buddy</h1>
 		<p class="tagline">
@@ -61,44 +65,6 @@
 			</p>
 		</section>
 
-		<section class="card">
-			<h2>What it says</h2>
-			<p>
-				Spoken nudges come from a small set of fixed phrasings - several per habit, so a repeat
-				offender does not hear the same line four times running. That is the default because it
-				is instant, free, and never says anything strange to you.
-			</p>
-			<p>
-				A <strong>language model can rewrite them</strong> if you turn it on
-				(<code>FOCUS_BUDDY_USE_LLM_NUDGES</code>): a 4-bit Llama-3.2-1B running locally through
-				MLX on the <code>edge-vlm</code> path, or a hosted model otherwise. Whatever it writes
-				has to pass validation before it reaches a speaker - right length, actually mentions the
-				habit that was seen, and does not contradict the frame. Anything that fails is replaced
-				by the fixed phrasing. A buddy that is confidently wrong about you is worse than one
-				that repeats itself.
-			</p>
-			<p class="fine">
-				The hourly summary is not written by a model at all. "You've been working 2h,
-				nail-biting 3 times" is formatted straight from the counters, because those numbers are
-				facts about your day and should not be paraphrased by anything that can hallucinate.
-				The voice is OpenAI text-to-speech, or the macOS <code>say</code> command, which is
-				offline and free like the rest of the default path.
-			</p>
-		</section>
-
-		<section class="card">
-			<h2>See it work</h2>
-			<video class="demo" controls playsinline preload="none" poster="media/demo-poster.jpg">
-				<source src="media/demo.mp4" type="video/mp4" />
-				Your browser cannot play this video.
-				<a href="media/demo.mp4">Download it instead.</a>
-			</video>
-			<p class="fine">
-				The phone comes out, the Mini notices, and says so. Nothing in that loop leaves the
-				machine unless you ask it to.
-			</p>
-		</section>
-
 		<section class="card highlight">
 			<h2>The unusual part: it costs nothing to run</h2>
 			<p>
@@ -134,7 +100,52 @@ focus-buddy --desktop --backend edge</code></pre>
 				That needs no API key and no network. For phone detection and posture, set an
 				<code>OPENAI_API_KEY</code> and use <code>--backend cloud</code> - from the dashboard,
 				the app has a settings page for it. <code>edge-vlm</code> runs the old local VLM path
-				and is kept for comparison, not recommended; see the table above for why.
+				and is kept for comparison, not recommended; the benchmark further down says why.
+			</p>
+		</section>
+
+		<section class="card">
+			<h2>How it works</h2>
+			<div class="flow">
+				<span class="step">Camera frame</span>
+				<span class="arrow">→</span>
+				<span class="step optional">Geometry <em>or</em> VLM</span>
+				<span class="arrow">→</span>
+				<span class="step">Observation</span>
+				<span class="arrow">→</span>
+				<span class="step">Nudge template</span>
+				<span class="arrow">→</span>
+				<span class="step optional">LLM rewrite <em>optional</em></span>
+				<span class="arrow">→</span>
+				<span class="step">Validation</span>
+				<span class="arrow">→</span>
+				<span class="step">Speech</span>
+			</div>
+			<p class="fine">
+				The two dashed boxes are the only places a model can appear, and neither is
+				load-bearing. Drop the VLM and geometry still answers contact, gaze and presence; drop
+				the LLM rewrite and the fixed phrasing is spoken as written. Everything between them is
+				ordinary code, which is why the whole loop can be tested with no model at all.
+			</p>
+			<p>
+				Every vision backend returns the same typed <code>Observation</code>, so swapping
+				geometry for a cloud model changes nothing downstream. The four backend families -
+				perception, brain, speech, hardware - each sit behind a <code>Protocol</code> built by a
+				small factory from <code>Settings</code>, which is what lets the whole loop be tested
+				against fakes with no camera, no network and no models.
+			</p>
+			<h3>Two rules the design does not bend on</h3>
+			<p class="fine">
+				<strong>The model never gets the last word.</strong> Nudges come from fixed phrasings by
+				default. A language model may rewrite them, but whatever it produces must pass
+				validation first - right length, actually mentions the habit it saw, and does not
+				contradict the frame. Small models love to append "…and you're not even looking at your
+				screen", which is often flatly untrue. Anything that fails is replaced by the template.
+			</p>
+			<p class="fine">
+				<strong>The summary is computed, not generated.</strong> "You've been working 2h,
+				nail-biting 3 times" is formatted from counters. Those numbers are facts about your day
+				and should not be paraphrased by anything that can hallucinate.
 			</p>
 		</section>
 
@@ -191,41 +202,6 @@ focus-buddy --desktop --backend edge</code></pre>
 				The models were not merely wrong, they were <em>not looking</em>. SmolVLM2 returned a
 				character-identical sentence - "there is a hand touching the face, specifically near the
 				mouth" - for three different frames and for a picture of coloured rectangles.
-			</p>
-		</section>
-
-		<section class="card">
-			<h2>How it works</h2>
-			<div class="flow">
-				<span class="step">Camera frame</span>
-				<span class="arrow">→</span>
-				<span class="step">Geometry <em>or</em> model</span>
-				<span class="arrow">→</span>
-				<span class="step">Observation</span>
-				<span class="arrow">→</span>
-				<span class="step">Nudge</span>
-				<span class="arrow">→</span>
-				<span class="step">Speech</span>
-			</div>
-			<p>
-				Every vision backend returns the same typed <code>Observation</code>, so swapping
-				geometry for a cloud model changes nothing downstream. The four backend families -
-				perception, brain, speech, hardware - each sit behind a <code>Protocol</code> built by a
-				small factory from <code>Settings</code>, which is what lets the whole loop be tested
-				against fakes with no camera, no network and no models.
-			</p>
-			<h3>Two rules the design does not bend on</h3>
-			<p class="fine">
-				<strong>The model never gets the last word.</strong> Nudges come from fixed phrasings by
-				default. A language model may rewrite them, but whatever it produces must pass
-				validation first - right length, actually mentions the habit it saw, and does not
-				contradict the frame. Small models love to append "…and you're not even looking at your
-				screen", which is often flatly untrue. Anything that fails is replaced by the template.
-			</p>
-			<p class="fine">
-				<strong>The summary is computed, not generated.</strong> "You've been working 2h,
-				nail-biting 3 times" is formatted from counters. Those numbers are facts about your day
-				and should not be paraphrased by anything that can hallucinate.
 			</p>
 		</section>
 
@@ -343,6 +319,31 @@ focus-buddy --desktop --backend edge</code></pre>
 				<code>numpy&gt;=2.2.5</code> - there is no overlap, so it gets its own virtualenv and
 				speaks over a pipe. The sidecar returns raw landmarks and the parent applies every
 				threshold, so the geometry has exactly one tested copy.
+			</p>
+		</section>
+
+		<section class="card">
+			<h2>What it says</h2>
+			<p>
+				Spoken nudges come from a small set of fixed phrasings - several per habit, so a repeat
+				offender does not hear the same line four times running. That is the default because it
+				is instant, free, and never says anything strange to you.
+			</p>
+			<p>
+				A <strong>language model can rewrite them</strong> if you turn it on
+				(<code>FOCUS_BUDDY_USE_LLM_NUDGES</code>): a 4-bit Llama-3.2-1B running locally through
+				MLX on the <code>edge-vlm</code> path, or a hosted model otherwise. Whatever it writes
+				has to pass validation before it reaches a speaker - right length, actually mentions the
+				habit that was seen, and does not contradict the frame. Anything that fails is replaced
+				by the fixed phrasing. A buddy that is confidently wrong about you is worse than one
+				that repeats itself.
+			</p>
+			<p class="fine">
+				The hourly summary is not written by a model at all. "You've been working 2h,
+				nail-biting 3 times" is formatted straight from the counters, because those numbers are
+				facts about your day and should not be paraphrased by anything that can hallucinate.
+				The voice is OpenAI text-to-speech, or the macOS <code>say</code> command, which is
+				offline and free like the rest of the default path.
 			</p>
 		</section>
 	</main>
