@@ -59,7 +59,7 @@ Two conventions worth respecting:
 camera, a robot, a model or a network. New behaviour in `loop.py` should be testable there.
 
 `tests/test_captions.py` is a regression suite: every case is something a real vision model
-actually said. If you tune a pattern in `perception/captions.py`, run it — those tests are
+actually said. If you tune a pattern in `perception/captions.py`, run it - those tests are
 the only thing that catches a change that silently breaks detection for a phrasing you
 were not thinking about. When you fix a new misclassification, add the caption that caused
 it.
@@ -68,7 +68,7 @@ it.
 
 - Keep `ruff`, `mypy` and `pytest` green.
 - One concern per PR.
-- If you change what the buddy says or when it says it, say so in the description — that is
+- If you change what the buddy says or when it says it, say so in the description - that is
   the part users actually experience.
 
 ## Code of conduct

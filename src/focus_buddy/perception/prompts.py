@@ -34,8 +34,8 @@ Respond with exactly one line in exactly this format, with no extra text before 
 # because "hands not visible" is a sticky prior once the model commits to it.
 EDGE_VISION_PROMPT = """
 Webcam close-up. Reply in exactly two short sentences.
-Sentence 1 (required): is anything supporting or touching the face — hand, fingers, fist,
+Sentence 1 (required): is anything supporting or touching the face - hand, fingers, fist,
 forearm, wrist, or sleeve under the chin/cheek? Or finger at/in the mouth? Or nothing touching?
 Do not say "hands not visible" if a sleeve or arm is under the chin.
-Sentence 2: where is the person looking — screen, camera, phone, or away?
+Sentence 2: where is the person looking - screen, camera, phone, or away?
 """

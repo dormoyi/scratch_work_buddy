@@ -14,7 +14,7 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 # Frames to discard before reading. OpenCV buffers frames, and with multi-second
-# inference the buffered one can be several seconds stale — which shows up as the
+# inference the buffered one can be several seconds stale - which shows up as the
 # buddy nudging you about something you stopped doing.
 _STALE_FRAMES_TO_DROP = 4
 

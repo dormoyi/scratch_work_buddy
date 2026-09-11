@@ -92,7 +92,7 @@
 
 <script>
 const HELP = {
-  "edge": "Landmark geometry on this machine. No API key, no model, ~0.05s a frame. Detects face-touching, nail-biting, gaze and whether you are at the desk — but not phone use. Needs the sidecar: run focus-buddy-setup-sidecar once.",
+  "edge": "Landmark geometry on this machine. No API key, no model, ~0.05s a frame. Detects face-touching, nail-biting, gaze and whether you are at the desk - but not phone use. Needs the sidecar: run focus-buddy-setup-sidecar once.",
   "cloud": "An OpenAI vision model. Detects everything including phone use. Needs an API key and sends each frame to OpenAI.",
   "edge-vlm": "The old local vision model. Kept because it runs, not because it works: it scored at chance on a labelled set and takes seconds per frame."
 };
@@ -225,8 +225,8 @@ $("save").addEventListener("click", async () => {
     if (sentKey) saved.push(state.has_api_key ? "API key saved" : "API key NOT saved");
     saved.push(`backend ${state.backend}`, `speech ${state.speech}`,
                `${state.nudge_cooldown_s}s between nudges`);
-    result.textContent = "Saved — " + saved.join(", ")
-      + (state.ready ? ". Applying now — the status above will show it restart."
+    result.textContent = "Saved - " + saved.join(", ")
+      + (state.ready ? ". Applying now - the status above will show it restart."
                      : ". Still not ready; see above.");
     result.className = "save-result " + (state.ready ? "ok" : "warn");
   } catch (err) {

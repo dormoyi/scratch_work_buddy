@@ -18,21 +18,21 @@ from .observations import Habit, Observation
 NUDGE_TEMPLATES: dict[Habit, tuple[str, ...]] = {
     Habit.BITING_NAILS: (
         "Hey, you're biting your nails again.",
-        "Oops — ease up on the nail biting.",
+        "Oops - ease up on the nail biting.",
         "Hey, give those nails a break.",
-        "Caught you biting your nails — easy does it.",
+        "Caught you biting your nails - easy does it.",
     ),
     Habit.TOUCHING_FACE: (
         "Hey, you're touching your face again.",
-        "Oops — hands off your face for a bit.",
+        "Oops - hands off your face for a bit.",
         "Hey, try not to touch your face.",
         "Face touch! Maybe keep your hands down for a sec.",
     ),
     Habit.LOOKING_AT_PHONE: (
         "Hey, maybe put the phone down for now.",
-        "Oops — phone can wait a minute.",
+        "Oops - phone can wait a minute.",
         "Hey, slide the phone aside when you can.",
-        "Phone check — try putting it down for a bit.",
+        "Phone check - try putting it down for a bit.",
     ),
 }
 

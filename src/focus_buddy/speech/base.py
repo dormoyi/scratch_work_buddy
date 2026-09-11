@@ -35,7 +35,7 @@ def wav_duration_s(path: Path) -> float:
 
     The declared frame count is bounded by the bytes actually on disk. A WAV
     written by a streaming producer carries a placeholder length in its header
-    (OpenAI's is 2147483647), and callers sleep for whatever this returns — so
+    (OpenAI's is 2147483647), and callers sleep for whatever this returns - so
     trusting the header outright parks the robot for 24 days after one nudge.
     """
     with contextlib.suppress(Exception):

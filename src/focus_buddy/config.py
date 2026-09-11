@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import sys
 from dataclasses import dataclass, field
@@ -154,14 +155,26 @@ class Settings:
         return self.backend is Backend.EDGE
 
     @property
+    def local_nudge_model_available(self) -> bool:
+        """Whether a language model can phrase nudges without the network.
+
+        MLX is macOS-on-Apple-Silicon only and ships with the edge-vlm extra, so
+        a Linux box or an install without that extra simply has no local option.
+        """
+        if sys.platform != "darwin":
+            return False
+        return importlib.util.find_spec("mlx_lm") is not None
+
+    @property
     def needs_openai(self) -> bool:
-        """Whether this configuration will call the OpenAI API."""
-        return (
-            self.backend is Backend.CLOUD
-            or self.speech is SpeechEngine.OPENAI
-            # Only edge-vlm carries a local language model to phrase nudges with.
-            or (self.use_llm_nudges and self.backend is not Backend.EDGE_VLM)
-        )
+        """Whether this configuration will call the OpenAI API.
+
+        Deliberately does not include LLM nudges on a local backend. Choosing an
+        offline backend and then turning on nudge rewriting used to reach for a
+        paid API without saying so; now it uses a local model or, failing that,
+        the fixed phrasings.
+        """
+        return self.backend is Backend.CLOUD or self.speech is SpeechEngine.OPENAI
 
     def validate(self) -> list[str]:
         """Return fatal configuration errors; also records non-fatal warnings.
@@ -217,6 +230,17 @@ class Settings:
             self.warnings.append(
                 "backend=edge-vlm scored at chance on a labelled set and takes seconds per "
                 "frame. FOCUS_BUDDY_BACKEND=edge is local, faster and measured."
+            )
+
+        if (
+            self.use_llm_nudges
+            and self.backend is not Backend.CLOUD
+            and not self.local_nudge_model_available
+        ):
+            self.warnings.append(
+                f"FOCUS_BUDDY_USE_LLM_NUDGES is on, but backend={self.backend.value} has no local "
+                "language model available (needs macOS and the edge-vlm extra). Nudges will use "
+                "the fixed phrasings rather than silently calling a paid API."
             )
 
         if self.speech is SpeechEngine.NONE:
